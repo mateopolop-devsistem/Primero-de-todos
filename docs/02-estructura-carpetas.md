@@ -35,9 +35,16 @@ jb-plataforma/
 │   │   ├── (tienda)/                 # grupo público, layout con header+footer
 │   │   │   ├── layout.tsx
 │   │   │   ├── page.tsx                        # HOME
-│   │   │   ├── pollos/
-│   │   │   │   └── page.tsx                    # landing de la línea principal
-│   │   │   ├── insumos/
+│   │   │   ├── nacimientos/
+│   │   │   │   └── page.tsx                    # ★ calendario de camadas
+│   │   │   ├── ayudame-a-elegir/
+│   │   │   │   └── page.tsx                    # ★ asesor de compra
+│   │   │   ├── guias/
+│   │   │   │   ├── page.tsx                    # ★ crianza — motor de SEO
+│   │   │   │   └── [slug]/page.tsx
+│   │   │   ├── envios/
+│   │   │   │   └── page.tsx                    # ★ consulta de transporte por ciudad
+│   │   │   ├── kits/
 │   │   │   │   └── page.tsx
 │   │   │   ├── productos/
 │   │   │   │   ├── page.tsx                    # catálogo + filtros
@@ -55,8 +62,8 @@ jb-plataforma/
 │   │   │   └── (legales)/
 │   │   │       ├── terminos/page.tsx
 │   │   │       ├── privacidad/page.tsx
-│   │   │       ├── envios/page.tsx
-│   │   │       └── devoluciones/page.tsx
+│   │   │       ├── politica-mortandad/page.tsx
+│   │   │       └── arrepentimiento/page.tsx
 │   │   │
 │   │   ├── (checkout)/               # layout SIN header ni menú: cero fugas
 │   │   │   ├── layout.tsx
@@ -74,7 +81,7 @@ jb-plataforma/
 │   │   │       ├── page.tsx                    # resumen
 │   │   │       ├── pedidos/
 │   │   │       │   ├── page.tsx
-│   │   │       │   └── [orderNumber]/page.tsx  # seguimiento + ajuste de peso
+│   │   │       │   └── [orderNumber]/page.tsx  # seguimiento + datos de despacho
 │   │   │       ├── direcciones/page.tsx
 │   │   │       ├── datos-fiscales/page.tsx
 │   │   │       ├── comprobantes/page.tsx
@@ -83,37 +90,49 @@ jb-plataforma/
 │   │   ├── admin/                    # ── PANEL ADMINISTRATIVO ─────────
 │   │   │   ├── layout.tsx                      # sidebar + guarda por rol
 │   │   │   ├── page.tsx                        # dashboard
+│   │   │   ├── camadas/                        # ★ módulo central
+│   │   │   │   ├── page.tsx                    # calendario + lista
+│   │   │   │   ├── nueva/page.tsx
+│   │   │   │   └── [id]/
+│   │   │   │       ├── page.tsx
+│   │   │   │       └── nacimiento/page.tsx     # registrar nacidos reales
+│   │   │   ├── despachos/                      # ★ operación del día
+│   │   │   │   ├── page.tsx                    # agrupado por transporte
+│   │   │   │   └── hoja-de-ruta/page.tsx       # reparto propio Córdoba
 │   │   │   ├── pedidos/
 │   │   │   │   ├── page.tsx                    # tablero + tabla
 │   │   │   │   ├── [id]/page.tsx
-│   │   │   │   └── preparacion/page.tsx        # pantalla de pesaje
+│   │   │   │   └── nuevo/page.tsx              # carga manual (WhatsApp/tel.)
 │   │   │   ├── productos/
 │   │   │   │   ├── page.tsx
 │   │   │   │   ├── nuevo/page.tsx
 │   │   │   │   ├── [id]/page.tsx
 │   │   │   │   └── importar/page.tsx           # carga masiva CSV
 │   │   │   ├── categorias/page.tsx
-│   │   │   ├── stock/
+│   │   │   ├── stock/                          # sólo insumos
 │   │   │   │   ├── page.tsx
-│   │   │   │   ├── movimientos/page.tsx
-│   │   │   │   └── camadas/page.tsx            # pollitos BB por fecha
+│   │   │   │   └── movimientos/page.tsx
 │   │   │   ├── precios/
 │   │   │   │   ├── listas/page.tsx
+│   │   │   │   ├── escalas/page.tsx            # tramos por cantidad
 │   │   │   │   └── actualizacion-masiva/page.tsx
 │   │   │   ├── clientes/
 │   │   │   │   ├── page.tsx
 │   │   │   │   ├── [id]/page.tsx
+│   │   │   │   ├── a-reponer/page.tsx          # según ciclo productivo
 │   │   │   │   └── solicitudes-mayoristas/page.tsx
-│   │   │   ├── envios/
-│   │   │   │   ├── zonas/page.tsx
-│   │   │   │   └── hoja-de-ruta/page.tsx
+│   │   │   ├── transportes/                    # ★ mapa logístico
+│   │   │   │   ├── page.tsx
+│   │   │   │   ├── [id]/destinos/page.tsx      # agencias, días, cortes
+│   │   │   │   └── recorridos/page.tsx         # zonas propias Córdoba
 │   │   │   ├── pagos/
 │   │   │   │   ├── page.tsx
 │   │   │   │   └── transferencias/page.tsx     # validar comprobantes
 │   │   │   ├── cupones/page.tsx
 │   │   │   ├── contenido/
 │   │   │   │   ├── home/page.tsx
-│   │   │   │   └── banners/page.tsx
+│   │   │   │   ├── banners/page.tsx
+│   │   │   │   └── guias/page.tsx              # guías de crianza
 │   │   │   ├── reportes/page.tsx
 │   │   │   ├── usuarios/page.tsx
 │   │   │   └── configuracion/page.tsx
@@ -156,16 +175,44 @@ jb-plataforma/
 │   │   │   ├── schemas.ts                      # Zod
 │   │   │   └── index.ts                        # ÚNICA superficie pública
 │   │   │
-│   │   ├── pricing/                            # precios, listas, IVA, cupones
-│   │   ├── inventory/                          # stock, lotes, reservas, camadas
+│   │   ├── hatchery/               ★ camadas — el módulo propio del negocio
+│   │   │   ├── domain/
+│   │   │   │   ├── hatch-batch.ts               # cupo, cierre, faltantes
+│   │   │   │   └── availability.ts              # reglas de disponibilidad
+│   │   │   ├── application/
+│   │   │   │   ├── list-upcoming-batches.ts
+│   │   │   │   ├── reserve-capacity.ts          # transaccional
+│   │   │   │   ├── register-hatch.ts            # nacidos reales
+│   │   │   │   └── apply-shortage-protocol.ts   # protocolo de faltante
+│   │   │   ├── infrastructure/
+│   │   │   ├── ui/
+│   │   │   │   ├── hatch-calendar.tsx
+│   │   │   │   ├── batch-selector.tsx
+│   │   │   │   └── capacity-bar.tsx
+│   │   │   └── index.ts
+│   │   │
+│   │   ├── dispatch/               ★ transportes, agencias, guías, recorridos
+│   │   │   ├── domain/
+│   │   │   │   └── departure-matching.ts        # fecha de nacimiento × salida
+│   │   │   ├── application/
+│   │   │   │   ├── find-carriers-for-city.ts
+│   │   │   │   ├── validate-departure-window.ts
+│   │   │   │   └── register-tracking-code.ts
+│   │   │   ├── ui/
+│   │   │   │   ├── city-carrier-lookup.tsx      # "¿mandás a mi ciudad?"
+│   │   │   │   └── freight-notice.tsx           # flete a cargo del destinatario
+│   │   │   └── index.ts
+│   │   │
+│   │   ├── advisor/                             # asesor de compra (3 preguntas)
+│   │   ├── pricing/                             # listas, escalas por cantidad, IVA
+│   │   ├── inventory/                           # stock de insumos, lotes
 │   │   ├── cart/
 │   │   ├── checkout/
-│   │   ├── orders/                             # incluye ajuste por peso real
-│   │   ├── payments/                           # mercadopago/ y transfer/
-│   │   ├── shipping/
+│   │   ├── orders/                              # estados, faltantes, reclamos
+│   │   ├── payments/                            # mercadopago/ y transfer/
 │   │   ├── customers/
-│   │   ├── notifications/                      # email/, whatsapp/, templates/
-│   │   ├── cms/
+│   │   ├── notifications/                       # email/, whatsapp/, templates/
+│   │   ├── cms/                                 # incluye guías de crianza
 │   │   └── reporting/
 │   │       └── (misma estructura interna en todos)
 │   │
@@ -190,7 +237,7 @@ jb-plataforma/
 │   │   │   ├── auth.ts
 │   │   │   ├── events.ts                       # bus de eventos de dominio
 │   │   │   ├── money.ts                        # aritmética en centavos
-│   │   │   ├── weight.ts                       # aritmética en gramos
+│   │   │   ├── quantity.ts                     # mínimos, múltiplos, yapa
 │   │   │   ├── logger.ts
 │   │   │   ├── rate-limit.ts
 │   │   │   ├── slugify.ts
@@ -239,12 +286,16 @@ jb-plataforma/
 3. **`app/` no tiene lógica.** Las páginas arman datos y componen UI. Si un
    archivo dentro de `app/` supera ~150 líneas, hay lógica mal ubicada.
 
-4. **El dinero se maneja en centavos enteros y el peso en gramos enteros.** Nunca
-   `float`. `money.ts` y `weight.ts` son obligatorios; sumar precios con `+` sobre
-   decimales genera diferencias de centavos que después aparecen en la conciliación.
+4. **El dinero se maneja en centavos enteros.** Nunca `float`. `money.ts` es
+   obligatorio; sumar precios con `+` sobre decimales genera diferencias de
+   centavos que después aparecen en la conciliación.
 
-5. **Nombres de rutas en español, código en inglés.** La URL es parte del producto
-   y del SEO (`/producto/pollo-entero-fresco`); el código sigue la convención
+5. **Las cantidades de pollitos son enteros y siempre pasan por `quantity.ts`**,
+   que valida mínimo (50) y múltiplo (50) y calcula la yapa por mortandad. Que
+   esa regla viva en un solo lugar evita que el carrito acepte 73 pollitos.
+
+6. **Nombres de rutas en español, código en inglés.** La URL es parte del producto
+   y del SEO (`/producto/parrillero-doble-pechuga`); el código sigue la convención
    universal del ecosistema. Es la combinación que menos fricción genera.
 
 ---

@@ -100,18 +100,23 @@ del módulo (`modules/<x>/index.ts`).
 
 | Módulo | Responsabilidad | No es responsable de |
 |---|---|---|
-| **catalog** | Productos, variantes, categorías, atributos, imágenes, búsqueda | Precios finales, stock disponible |
-| **pricing** | Listas de precios, precio por grupo de cliente, promociones, cupones, IVA | Mostrar precios en pantalla |
-| **inventory** | Stock por depósito, lotes, reservas, movimientos, camadas de pollitos | Decidir si se puede vender (eso lo pregunta checkout) |
+| **catalog** | Productos, líneas genéticas (`chick_specs`), categorías, atributos, imágenes, búsqueda | Precios finales, disponibilidad |
+| **pricing** | Listas de precios, escalas por cantidad, grupos de cliente, promociones, cupones, IVA | Mostrar precios en pantalla |
+| **hatchery** ⚠ | **Camadas: fechas de nacimiento, cupo, reservas, cierre, nacimiento real, lista de espera** | Decidir si se puede vender (eso lo pregunta checkout) |
+| **inventory** | Stock de insumos por depósito, lotes, movimientos | Cupo de camadas (eso es `hatchery`) |
+| **advisor** ⚠ | Asesor de compra: traduce mercado objetivo → línea recomendada | Vender |
 | **cart** | Carrito persistente, ítems, recálculo, expiración de reservas | Cobrar |
-| **checkout** | Validación del pedido, cálculo de envío, creación de la orden | Procesar el pago |
-| **orders** | Ciclo de vida del pedido, estados, ajustes por peso, historial | Cobrar, despachar |
+| **checkout** | Validación del pedido, logística, creación de la orden | Procesar el pago |
+| **orders** | Ciclo de vida del pedido, estados, faltantes, reclamos, historial | Cobrar, despachar |
 | **payments** | Mercado Pago, transferencias, comprobantes, conciliación, reembolsos | Cambiar el estado del pedido (lo notifica) |
-| **shipping** | Zonas, costos, franjas horarias, rutas de reparto, retiro en local | Cobrar el envío |
+| **dispatch** ⚠ | **Transportes, agencias de destino, días de salida, guías, recorridos propios, retiro** | Cobrar el flete (muchas veces no lo cobra JB) |
 | **customers** | Cuentas, perfiles fiscales, direcciones, grupos, aprobación mayorista | Autenticación (delega en auth) |
 | **notifications** | Email, WhatsApp, notificaciones internas, plantillas | Decidir cuándo notificar (lo dispara cada módulo por evento) |
-| **reporting** | Métricas de venta, productos más buscados, embudo de conversión | Escribir en tablas operativas |
-| **cms** | Home editable, banners, páginas institucionales, FAQ | Catálogo |
+| **reporting** | Métricas de venta, ocupación de camadas, embudo, mortandad por transporte | Escribir en tablas operativas |
+| **cms** | Home editable, banners, páginas, FAQ, **guías de crianza** | Catálogo |
+
+> **`hatchery` y `dispatch` son los dos módulos que no existen en un e-commerce
+> genérico** y los que justifican una plataforma propia. El resto es estándar.
 
 ### Comunicación entre módulos: eventos de dominio
 
@@ -119,16 +124,27 @@ Los módulos se acoplan por eventos, no por llamadas directas, cuando la acción
 un efecto secundario:
 
 ```
-order.paid          → inventory.confirmarReserva
-                    → notifications.enviarConfirmacion
-                    → shipping.crearEnvio
-                    → invoicing.emitirComprobante   (Fase 3)
+order.paid            → hatchery.confirmarReserva
+                      → notifications.confirmarConFecha
+                      → dispatch.planificarDespacho
+                      → invoicing.emitirComprobante   (Fase 3)
 
-order.weight_adjusted → payments.gestionarDiferencia
-                      → notifications.avisarAjuste
+batch.hatched         → orders.marcarNacidos
+                      → dispatch.generarDespachosDelDia
+                      → notifications.avisarNacimiento
+
+batch.short_hatch  ⚠  → orders.aplicarProtocoloDeFaltante
+                      → payments.reintegrarProporcional
+                      → notifications.avisarFaltante
+
+dispatch.shipped      → notifications.enviarNumeroDeGuia
 
 customer.approved_wholesale → notifications.darBienvenidaMayorista
 ```
+
+`batch.short_hatch` (nacieron menos de los comprometidos) es el evento que más
+importa que esté bien resuelto: dispara el aviso proactivo al cliente antes de
+que se entere por su cuenta.
 
 Implementación en Fase 1: un despachador de eventos en proceso, síncrono para lo
 crítico y encolado en **Upstash QStash** para lo que puede fallar sin romper la
@@ -187,7 +203,7 @@ por `event_id` y respuesta 200 inmediata.
 |---|---|
 | Manipulación de precios desde el cliente | El precio **jamás** viaja del navegador al servidor. Se recalcula íntegro en el servidor al confirmar el pedido |
 | Webhook de pago falsificado | Verificación de firma HMAC + consulta de confirmación a la API de MP antes de marcar pagado |
-| Sobreventa de stock | Reserva con bloqueo transaccional (`SELECT ... FOR UPDATE`) + TTL de 20 min |
+| **Sobreventa de cupo de camada** | Reserva con bloqueo transaccional (`SELECT ... FOR UPDATE`) + TTL de 30 min. Es el riesgo operativo más grave: comprometer más pollitos de los que van a nacer deja a un productor sin producción |
 | Acceso al panel admin | Middleware por rol + segundo factor para roles con permisos financieros (Fase 2) |
 | Fuerza bruta en login | Rate limiting por IP y por email en Upstash |
 | Datos fiscales de clientes | Cifrado en reposo del proveedor + acceso restringido por rol + registro de auditoría |

@@ -6,8 +6,8 @@ La combinación pedida se traduce así:
 
 | Inspiración | Qué se toma | Qué **no** se toma |
 |---|---|---|
-| **Apple** | Espacio en blanco generoso, tipografía como estructura, foto de producto protagonista, una sola acción clara por pantalla | Minimalismo extremo que esconde información. Acá el precio y el stock se ven siempre |
-| **Mercado Libre** | Compra sin fricción, precio enorme y legible, botón de acción imposible de no ver, envío informado antes de comprar | Densidad visual saturada, banners superpuestos, colores compitiendo entre sí |
+| **Apple** | Espacio en blanco generoso, tipografía como estructura, foto de producto protagonista, una sola acción clara por pantalla | Minimalismo extremo que esconde información. Acá el precio, la fecha y el cupo se ven siempre |
+| **Mercado Libre** | Compra sin fricción, precio enorme y legible, botón de acción imposible de no ver, logística informada antes de comprar | Densidad visual saturada, banners superpuestos, colores compitiendo entre sí |
 | **Amazon** | Jerarquía de categorías clara, filtros potentes, ficha con ficha técnica completa, "comprar de nuevo" | Interfaz sobrecargada, exceso de recomendaciones |
 
 **Síntesis en una frase:**
@@ -22,8 +22,8 @@ sólo donde el usuario la necesita (listado y ficha técnica).
 
 ## 2. Color
 
-Paleta construida sobre el producto real. El pollo y el campo dan un ámbar cálido
-y un verde natural; el resto es neutro para que las fotos manden.
+Paleta construida sobre el producto real: el pollito recién nacido y el campo dan
+un ámbar cálido y un verde natural. El resto es neutro para que las fotos manden.
 
 ### Marca
 
@@ -68,12 +68,12 @@ y un verde natural; el resto es neutro para que las fotos manden.
 |---|---|---|
 | Pendiente de pago | `neutral-500` | reloj |
 | En revisión | `warning` | lupa |
-| Confirmado | `info` | check en círculo |
-| En preparación | `info` | caja |
-| Pesado / ajustado | `warning` | balanza |
-| Listo | `secondary` | check doble |
-| En camino | `info` | camión |
-| Entregado | `success` | check relleno |
+| Reserva confirmada | `info` | check en círculo |
+| Programado (espera nacimiento) | `info` | calendario |
+| Nacido | `secondary` | pollito |
+| Listo / encajonado | `secondary` | check doble |
+| Despachado | `info` | camión |
+| Retirado / entregado | `success` | check relleno |
 | Cancelado | `danger` | cruz |
 
 ---
@@ -81,7 +81,7 @@ y un verde natural; el resto es neutro para que las fotos manden.
 ## 3. Tipografía
 
 - **Interfaz:** `Inter` (variable, autohospedada). Excelente legibilidad en
-  números — clave en una web donde todo son precios y kilos.
+  números — clave en una web donde todo son precios, cantidades y fechas.
 - **Títulos:** `Inter Display` o `Instrument Sans` para los `h1`/`h2` de la home.
 - **Números tabulares** (`font-variant-numeric: tabular-nums`) obligatorio en
   precios, cantidades y tablas: evita que las cifras "bailen" al actualizarse.
@@ -155,23 +155,29 @@ reduce el scroll a la mitad — es lo que espera quien viene de Mercado Libre.
 │  │                  ♡     │  │ ← favorito (Fase 2)
 │  │  [OFERTA]              │  │ ← badge esquina sup. izq.
 │  └────────────────────────┘  │
-│  Pollo entero fresco         │ ← 2 líneas máx.
-│  Aprox. 2,4 kg               │ ← peso/presentación
+│  Parrillero doble pechuga    │ ← 2 líneas máx.
+│  Cobb 500 · Mixto            │ ← línea y sexo
 │                              │
-│  $4.200 /kg                  │ ← precio: lo más grande
-│  ≈ $10.080 por unidad        │ ← estimado, en secundario
-│  ● En stock                  │ ← verde + punto
+│  $XXX por unidad             │ ← precio: lo más grande
+│  Desde 50 · baja a partir    │ ← escala por cantidad
+│  de 100                      │
+│  📅 Nace el 12/09            │ ← FECHA: tan importante
+│  ▓▓▓▓▓▓▒▒▒▒ 340 disponibles  │ ← barra de cupo
 │                              │
-│  [    Agregar    ]           │ ← ámbar, ancho completo
+│  [    Reservar    ]          │ ← ámbar, ancho completo
 └──────────────────────────────┘
 ```
 
 Variantes: `default`, `compact` (carruseles), `list` (resultados de búsqueda con
-más datos), `skeleton`.
+más datos), `batch` (tarjeta de camada en el calendario), `skeleton`.
 
-**Detalle crítico:** en productos por kilo, el precio grande es el **precio por
-kilo** (es como se compara en el rubro) y el estimado por unidad va debajo, en
-menor jerarquía.
+**Detalle crítico:** la tarjeta lleva **dos datos de primer nivel, no uno**:
+el precio y la fecha de nacimiento. En este negocio el cliente descarta un
+producto por la fecha tanto como por el precio, así que ocultar la fecha en la
+ficha obliga a un clic que muchos no dan.
+
+**La barra de cupo** usa color (verde → amarillo → rojo) y es urgencia real, no
+inventada: el cupo de una camada es físicamente finito.
 
 ### 6.2 Botones
 
@@ -187,25 +193,47 @@ Todos con estado `loading` obligatorio (spinner + deshabilitado). Un usuario que
 no ve respuesta toca dos veces y genera pedidos duplicados.
 
 ### 6.3 Selector de cantidad
-`[ − ]  20  [ + ]` con entrada manual, respetando `min_order_qty` y `qty_step`.
-Para pollitos BB muestra `[ − ] 500 [ + ]` con paso de 100 y la leyenda
-*"Se vende de a 100"*.
-
-### 6.4 Indicador de peso variable
-Componente propio, presente en tarjeta, ficha, carrito y checkout:
+`[ − ]  500  [ + ]` con entrada manual, respetando `min_order_qty` (50) y
+`qty_step` (50). Debajo, dos leyendas:
 
 ```
-⚖  Precio estimado
-   Se cobra el peso real. Variación habitual ±10%.
-   Te avisamos el total final antes de la entrega.       [ Cómo funciona ]
+Se vende de a 50
++ 15 sin cargo por mortandad
+💡 Sumá 100 más y el precio unitario baja 8%
 ```
 
-Aparecer en los cuatro lugares es deliberado: la queja "me cobraron distinto"
-sólo se evita repitiendo el mensaje.
+El aviso del **próximo escalón de precio** es el componente que más sube el
+ticket promedio en venta por volumen. Cuesta poco y se paga solo.
+
+### 6.4 Selector de camada
+Componente propio, presente en ficha, carrito y checkout:
+
+```
+📅 Elegí la fecha de nacimiento
+   ● 12/09 · 340 disponibles · reservás hasta el 05/09
+   ○ 26/09 · 1.000 disponibles
+   ○ 10/10 · próximamente          [ Avisarme ]
+```
+
+Estados: con cupo, cupo bajo (< 15%), agotada (con lista de espera), cerrada,
+planificada.
+
+### 6.4b Aviso de flete
+Presente en ficha, carrito, checkout, confirmación y email:
+
+```
+ⓘ  Flete estimado $XX.XXX
+    Lo pagás al transporte cuando retirás.
+    No está incluido en este total.        [ Cómo funciona ]
+```
+
+Aparecer en los cinco lugares es deliberado: la queja *"nadie me dijo que el
+flete se pagaba aparte"* sólo se evita repitiendo el mensaje.
 
 ### 6.5 Cajón de carrito (drawer)
-Se abre al agregar un producto. Muestra ítems, subtotal, cuánto falta para el
-envío gratis, y dos acciones: *Seguir comprando* / *Finalizar compra*.
+Se abre al agregar un producto. Muestra ítems con su fecha de nacimiento,
+subtotal, el aviso de próximo escalón de precio, y dos acciones:
+*Seguir comprando* / *Finalizar compra*.
 **No redirige a otra página al agregar**: interrumpir la navegación baja el
 tamaño del pedido.
 
@@ -215,8 +243,8 @@ categorías sugeridas y búsquedas recientes. En mobile se abre a pantalla compl
 
 ### 6.7 Señales de confianza
 Franja de 4 elementos con ícono + texto corto, reutilizable en home, ficha y
-checkout: *Cadena de frío garantizada · Entrega en 24–48 h · Pago seguro con
-Mercado Pago · Atención por WhatsApp*.
+checkout: *Vacunados de origen · Fecha de nacimiento asegurada · Despacho a todo
+el país · Pago seguro con Mercado Pago*.
 
 ---
 
@@ -239,8 +267,8 @@ Se respeta `prefers-reduced-motion` en todos los casos.
 ## 8. Modo oscuro
 
 **Fuera de alcance en Fase 1.** Los tokens ya se definen como variables CSS para
-que activarlo después sea trabajo de horas y no de días. En una tienda de
-alimentos, el fondo claro con foto real convierte mejor; no es prioridad.
+que activarlo después sea trabajo de horas y no de días. El fondo claro con foto real
+convierte mejor en catálogos de producto; no es prioridad.
 
 ---
 

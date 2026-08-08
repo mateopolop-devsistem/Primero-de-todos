@@ -1,187 +1,212 @@
 # 11 — Decisiones a validar
 
-Este documento es el que necesita tu respuesta. Está dividido en **decisiones
-bloqueantes** (sin ellas hay riesgo real de rehacer trabajo) y **decisiones
-importantes** (se pueden asumir por defecto y ajustar después).
+**Estado: segunda ronda.** La primera ronda corrigió un error de base — se había
+planificado sobre el supuesto de que JB vendía pollo faenado. No es así: JB vende
+**pollito bebé**, la materia prima. Toda la documentación fue reescrita.
 
 ---
 
-## A · Decisiones bloqueantes
+## A · Lo que ya está respondido
 
-### A1 · ¿Cómo se cobra el pollo? ⚠ la más importante
-
-El pollo se vende por kilo, pero el peso real se conoce recién al preparar el
-pedido. Hay que elegir cómo resolverlo:
-
-| Opción | Cómo lo ve el cliente | Implicancia |
-|---|---|---|
-| **1. Precio cerrado por unidad** | "Pollo entero $10.000" | Lo más simple. JB absorbe la variación de peso |
-| **2. Estimado + ajuste** ✅ recomendada | "$4.200/kg · ~2,4 kg ≈ $10.080. Se cobra el peso real" | Refleja el negocio real. Requiere pantalla de pesaje y notificaciones |
-| **3. Rangos de peso** | "Pollo 2,0–2,4 kg · $9.240" | Precio cerrado sin perder margen, pero hay que clasificar por peso antes de despachar |
-
-**Necesito saber:**
-- ¿Cuánto varía en la práctica el peso de un pollo? (mínimo y máximo reales)
-- ¿Hoy cómo se lo cobran a un cliente que compra 20 pollos?
-- ¿Se puede pesar y clasificar antes de publicar, o el peso se sabe recién al armar el pedido?
+| # | Pregunta | Respuesta | Impacto en el sistema |
+|---|---|---|---|
+| A1 | ¿Cómo se cobra el pollo? | **No aplica.** JB vende pollito BB, no carne. Precio **por unidad**, cerrado | Se eliminó toda la maquinaria de peso variable y ajuste posterior. El sistema se simplificó de forma importante |
+| — | ¿Y la variación de peso? | Es una decisión del **cliente**, no de JB. El que apunta a carnicería cría hasta ~3,2 kg (6 por cajón de 20 kg); el que apunta a parrillada faena en ~2 kg (10 por cajón) | Se convirtió en una **función**: el asesor de compra y el campo `crate_count` |
+| A1b | Peso del pollito | **45 g mínimo.** Menos de 45 g es descarte y no se vende | Campo `min_weight_grams`, y argumento de calidad comunicable |
+| A1c | Cantidad mínima | **50 unidades.** Se vende de a 50 o de a 100 | `min_order_qty = 50`, `qty_step = 50` |
+| A1d | Líneas que se venden | Doble pechuga, ponedor, campero / de chacra, ecológico. **Precios distintos** | 4 categorías + tabla `chick_specs` |
+| A3 | Envíos | **Todo el país.** Recorridos propios sólo por Córdoba; el resto por **comisionistas y transportes** | Se reemplazó el módulo de envíos por uno de despacho con transportes, agencias, días de salida y flete a cargo del destinatario |
+| A3b | Cadena de frío | **No aplica.** Es un pollito vivo, no carne | Se eliminó. En su lugar aparece la restricción inversa: el pollito necesita **calor** y no puede esperar días a que salga el transporte |
 
 ---
 
-### A2 · ¿Se venden pollitos BB por camada?
+## B · Lo que quedó abierto
 
-Todo el módulo de camadas (calendario, reservas, pedidos programados,
-recordatorios) depende de esto. Es **la funcionalidad más diferencial de la
-plataforma** para el público B2B, y también la más costosa de agregar después.
+### B1 · Los nacimientos ⚠ la pregunta principal
 
-**Necesito saber:**
-- ¿JB vende pollitos BB (bebé) o sólo pollo para consumo?
-- Si vende: ¿con qué anticipación se reservan? ¿Cada cuánto hay camadas?
-- ¿Cantidad mínima y múltiplos? (¿de a 100? ¿de a 50?)
-- ¿Se entregan en planta o se reparten?
+Te cortaste justo cuando ibas a contestar esto. Es lo que define si el catálogo
+muestra un **calendario** o simplemente **stock**, y hoy está diseñado como
+calendario porque es lo que corresponde a un pollito de un día.
 
-Si la respuesta es "no vendemos pollitos", el alcance de la Fase 1 baja
-aproximadamente 1,5 sprints.
+- ¿JB **incuba** o compra el pollito a una incubadora y lo revende?
+- ¿Los nacimientos son en **días fijos**? (típicamente un día fijo por semana)
+- ¿Cada cuánto hay nacimientos de cada línea? ¿Todas las semanas? ¿Alternadas?
+- ¿Con cuánta anticipación te reserva un cliente? ¿Días, semanas?
+- ¿Se puede vender "para la semana que viene" o hay que reservar con más tiempo?
+- ¿Cuántos pollitos salen por camada, aproximadamente?
+- ¿Alguna vez nacen menos de los comprometidos? ¿Cómo lo resolvés hoy?
+
+**Si la respuesta es "tengo pollitos casi siempre disponibles"**, el módulo de
+camadas se simplifica mucho y el catálogo pasa a mostrar stock común. Es menos
+trabajo, así que conviene saberlo antes de empezar.
+
+### B2 · Sexado
+
+- ¿Vendés **macho, hembra o mixto**? ¿Depende de la línea?
+- En ponedoras, ¿vendés sólo hembras? (es lo habitual)
+- ¿El precio cambia según el sexo?
+
+Hoy está modelado como `sex: MALE | FEMALE | MIXED` en `chick_specs`, y puede
+funcionar como variante de producto si el precio difiere.
+
+### B3 · Vacunación y mortandad
+
+- ¿Contra qué viene vacunado el pollito? (Marek, Gumboro, Newcastle, bronquitis)
+- ¿Es un diferencial tuyo frente a la competencia? Si lo es, va destacado.
+- ¿**Agregás pollitos de más** para cubrir la mortandad del viaje? ¿Qué
+  porcentaje?
+- ¿Cómo manejás hoy un reclamo de "me llegaron muertos"? ¿Reponés, descontás, no
+  cubrís?
+- ¿Hay un plazo para reclamar?
+
+Esto tiene que estar escrito y visible **antes** de comprar. Es el miedo número
+uno del cliente que te compra a distancia sin conocerte.
+
+### B4 · Los insumos
+
+En el pedido original mencionaste "insumos y productos avícolas" como segunda
+línea. Con el negocio ya aclarado:
+
+- ¿Qué insumos vendés concretamente? (alimento balanceado, vacunas, comederos,
+  bebederos, criadoras, viruta…)
+- ¿Son propios o los revendés?
+- ¿Los despachás por los mismos transportes o van aparte?
+- ¿Te interesa el **kit de arranque** (pollitos + criadora + comedero + bebedero
+  + alimento iniciador + viruta) para el cliente primerizo de 50 pollitos?
+
+El kit es, en mi opinión, la mejor oportunidad comercial del catálogo: sube el
+ticket, baja la mortandad del cliente y hace que vuelva. Un cliente al que se le
+mueren los pollitos no compra nunca más.
+
+### B5 · Precio mayorista
+
+- ¿El precio por volumen es **público** o requiere cuenta aprobada?
+  (recomendado: cuenta aprobada — protege el precio y te arma la base de clientes)
+- ¿Cuántos niveles hay? (minorista / granja / distribuidor)
+- ¿Los tramos son por cantidad (50 / 100 / 500 / 1000) o es un descuento general?
+- ¿Hay líneas que sólo vendés a mayoristas?
+
+### B6 · Pagos
+
+- ¿Ya tenés cuenta de Mercado Pago a nombre de la empresa (con CUIT)?
+- ¿Ofrecés cuotas? ¿Con o sin interés?
+- ¿Hacés descuento por transferencia? ¿Qué porcentaje? (sugerido: 5%)
+- ¿Los clientes grandes pagan al contado o hay cuenta corriente?
+  (la cuenta corriente está prevista para Fase 4)
+
+### B7 · Facturación
+
+- ¿Hoy cómo facturás? ¿Con qué sistema?
+- ¿Se puede seguir facturando por fuera de la web los primeros meses?
+  (así la facturación electrónica queda en Fase 3 y no atrasa el lanzamiento)
+- ¿Qué proporción de tus ventas es factura A?
+- ¿El pollito BB lleva IVA 10,5% o 21%?
 
 ---
 
-### A3 · ¿Cómo funcionan realmente los envíos?
+## C · Decisiones con valor por defecto
 
-Los pollos frescos requieren cadena de frío. Eso limita las opciones y hay que
-codificarlo desde el inicio.
-
-**Necesito saber:**
-- ¿Reparto propio? ¿Con qué vehículos y en qué radio?
-- ¿Qué días se reparte y a qué zonas?
-- ¿Costo del envío: fijo, por zona, por monto, por distancia?
-- ¿Hay envío gratis a partir de cierto monto?
-- ¿Existe retiro en planta? ¿En qué horarios?
-- ¿Los insumos secos (alimento, comederos) pueden ir por correo a otras provincias?
-- ¿Hay pedido mínimo? ¿Distinto para minorista y mayorista?
-
----
-
-### A4 · ¿Cómo se maneja el precio mayorista?
-
-**Necesito saber:**
-- ¿El precio mayorista es público o requiere cuenta aprobada?
-  (recomendado: **cuenta aprobada** — protege el precio y genera una base de datos
-  de clientes B2B)
-- ¿Cuántos niveles de precio hay? (minorista / mayorista / distribuidor / otro)
-- ¿El descuento es por porcentaje general o precio específico por producto?
-- ¿Hay descuentos por cantidad dentro del mismo nivel? (ej.: 10+ unidades)
-- ¿Hay productos que sólo se venden a mayoristas?
-- ¿Cuál es el mínimo de compra mayorista?
-
----
-
-### A5 · ¿Qué medios de pago y con qué condiciones?
-
-**Necesito saber:**
-- ¿JB ya tiene cuenta de Mercado Pago? ¿A nombre de la empresa (CUIT)?
-- ¿Se ofrecen cuotas? ¿Con interés o sin interés?
-- ¿Se hace descuento por transferencia? ¿Qué porcentaje? (sugerido: 5%)
-- ¿Se acepta efectivo contra entrega? (agrega complejidad al reparto)
-- ¿Los mayoristas pagan al contado o hay cuenta corriente? (la cuenta corriente
-  está prevista para Fase 4, pero conviene saberlo desde ahora)
-
----
-
-### A6 · ¿Se factura electrónicamente desde el día uno?
-
-La facturación electrónica ARCA está planificada para la Fase 3, pero si es
-obligatoria desde el inicio, sube a la Fase 1 y suma ~2 semanas.
-
-**Necesito saber:**
-- ¿Hoy cómo se factura? ¿Con qué sistema?
-- ¿Se puede seguir facturando por fuera de la web en los primeros meses?
-- ¿Qué proporción de las ventas es factura A (a responsables inscriptos)?
-- ¿Los pollos llevan IVA 10,5% y los insumos 21%, se confirma?
-
----
-
-## B · Decisiones importantes (con valor por defecto)
-
-Si no hay respuesta, se avanza con la opción marcada y se ajusta después.
+Si no hay respuesta, se avanza con esto y se ajusta después.
 
 | # | Decisión | Por defecto |
 |---|---|---|
-| B1 | Umbral de ajuste por peso que se absorbe sin cobrar | **$2.000** |
-| B2 | Tolerancia de peso informada al cliente | **±10%** |
-| B3 | Diferencia a favor del cliente | Reembolso si supera el umbral; crédito si no |
-| B4 | Tiempo de reserva de stock en el carrito | **20 minutos** |
-| B5 | Plazo para pagar por transferencia | **48 horas** |
-| B6 | Compra sin registro | **Sí, habilitada** |
-| B7 | Precios mostrados a minoristas | **Con IVA incluido** |
-| B8 | Precios mostrados a mayoristas | **Neto + IVA discriminado** |
-| B9 | Idioma y moneda | Español (Argentina), ARS |
-| B10 | Modo oscuro | Fase posterior |
-| B11 | Reseñas de productos | Fase 3 |
-| B12 | Blog | Fase 2 |
+| C1 | Tiempo de reserva de cupo en el carrito | 30 minutos |
+| C2 | Plazo para pagar por transferencia | 48 h (se acorta si la camada cierra antes) |
+| C3 | Compra sin registro | Sí, habilitada |
+| C4 | Precios a minoristas | Con IVA incluido |
+| C5 | Precios a mayoristas | Neto + IVA discriminado |
+| C6 | Flete por transporte | A cargo del destinatario, mostrado como estimado |
+| C7 | Idioma y moneda | Español (Argentina), ARS |
+| C8 | Modo oscuro | Fase posterior |
+| C9 | Reseñas de productos | Fase 3 |
+| C10 | Guías de crianza | **Fase 1** — son el motor de SEO del sitio |
 
 ---
 
-## C · Confirmación del stack técnico
+## D · El stack, revisado con honestidad
 
-La propuesta es **Next.js + PostgreSQL + Prisma + Vercel** (documento 03).
+En la primera ronda dije que si el pollo se vendía a precio cerrado por unidad y
+no había camadas, **Tiendanube pasaba a ser una alternativa seriamente
+considerable y más barata**. Ahora se cumple la primera condición: el precio es
+cerrado por unidad. Corresponde revisarlo.
 
-Sólo hace falta una decisión tuya si:
+**Qué se puede hacer razonablemente bien en Tiendanube o Shopify:** catálogo,
+carrito, Mercado Pago, mínimos de compra, precios mayoristas (con app), y
+despacho a coordinar.
 
-- **Ya existe un equipo o proveedor con otro stack.** Si JB ya trabaja con
-  desarrolladores de PHP/Laravel o WordPress, conviene evaluarlo: el mejor stack
-  es el que el equipo puede mantener.
-- **Hay preferencia por una plataforma cerrada** (Tiendanube, Shopify). Es
-  legítimo y más barato al inicio, pero **no soporta bien el peso variable ni las
-  camadas**. Si la respuesta a A1 es "opción 1: precio cerrado por unidad" y a A2
-  es "no vendemos pollitos", entonces Tiendanube pasa a ser una alternativa
-  seriamente considerable y honestamente más económica.
+**Qué no, y es donde se juega el proyecto:**
 
-**Esa dependencia es real y conviene decidirla temprano:** el modelo comercial
-determina si hace falta una plataforma a medida o no.
+| Necesidad | Por qué no encaja en una tienda enlatada |
+|---|---|
+| **Reserva contra fecha de nacimiento con cupo** | No existe el concepto. Se simula con "productos" por fecha, y se rompe al gestionar cupo, cierre y faltantes |
+| **Cruce fecha de nacimiento × día de salida del transporte** | Imposible sin desarrollo propio. Es lo que evita despachar animales que se mueren en el camino |
+| **Mapa de transportes con agencias y días** | No hay nada parecido. Es tu diferencial logístico |
+| **Flete a cargo del destinatario** | Choca con el modelo de checkout de cualquier plataforma |
+| **Asesor de compra por mercado objetivo** | Se puede hacer con una app externa, pobre y desconectada del catálogo |
+| **Panel por camada, no por pedido** | Es tu operación real y no se puede reproducir |
+| **Recompra por ciclo productivo** | Requiere `grow_out_days` por línea |
 
----
+**Mi recomendación, sin adornos:** si la respuesta a **B1** es *"tengo pollitos
+casi siempre disponibles, sin fechas"*, entonces Tiendanube es una opción
+legítima para empezar, más barata y más rápida, y te conviene evaluarla en serio
+antes de invertir en desarrollo. Si la respuesta es *"se vende por fecha de
+nacimiento y hay que reservar"*, entonces la plataforma propia se justifica
+sola: el calendario de camadas y el cruce con los transportes **son el producto**,
+no un adorno.
 
-## D · Información que necesito de JB para arrancar
-
-| # | Qué | Formato | Bloquea |
-|---|---|---|---|
-| D1 | Listado completo de productos con precio, unidad de venta y peso | Excel/CSV | Sprint 2 |
-| D2 | Fotos de productos (mínimo 1 por producto, ideal 3) | JPG/PNG alta resolución | Sprint 2 |
-| D3 | Fotos de la planta, el equipo y el reparto | JPG/PNG | Sprint 6 |
-| D4 | Logo en vectorial (SVG/AI) y colores institucionales | Archivo | Sprint 1 |
-| D5 | Razón social, CUIT, domicilio fiscal, condición IVA | Texto | Sprint 6 |
-| D6 | CBU, alias y titular de la cuenta | Texto | Sprint 4 |
-| D7 | Credenciales de Mercado Pago (prueba y producción) | Acceso | Sprint 4 |
-| D8 | Zonas de reparto, días y costos | Documento | Sprint 4 |
-| D9 | Historia de la empresa, 2 o 3 párrafos | Texto | Sprint 6 |
-| D10 | Dominio (¿ya se tiene? ¿cuál?) | Acceso al DNS | Sprint 1 |
-| D11 | Teléfono y WhatsApp de atención + horarios | Texto | Sprint 1 |
-| D12 | Redes sociales de JB | Enlaces | Sprint 6 |
-| D13 | 3 a 5 clientes dispuestos a dar testimonio | Contactos | Sprint 6 |
+Por eso B1 es la pregunta principal.
 
 ---
 
-## E · Preguntas de negocio que ayudan a priorizar
+## E · Información que necesito para arrancar
 
-Estas no bloquean el desarrollo, pero cambian dónde se pone el esfuerzo:
+| # | Qué | Bloquea |
+|---|---|---|
+| E1 | Listado de líneas con precio, mínimo y escalas por cantidad | Sprint 2 |
+| E2 | **Fotos reales** de pollitos, planta y encajonado | Sprint 2 |
+| E3 | Logo en vectorial y colores | Sprint 1 |
+| E4 | Calendario de nacimientos de los próximos 3 meses | Sprint 3 |
+| E5 | Lista de transportes y comisionistas con los que trabajás, con ciudades y días | Sprint 4 |
+| E6 | Zonas y días de reparto propio en Córdoba | Sprint 4 |
+| E7 | Razón social, CUIT, domicilio fiscal, condición IVA | Sprint 6 |
+| E8 | CBU, alias y titular | Sprint 4 |
+| E9 | Credenciales de Mercado Pago (prueba y producción) | Sprint 4 |
+| E10 | Política de mortandad, escrita | Sprint 4 |
+| E11 | Plan sanitario (contra qué vacunás) | Sprint 2 |
+| E12 | Historia de la empresa, 2 o 3 párrafos | Sprint 6 |
+| E13 | Dominio (¿cuál? ¿ya lo tenés?) | Sprint 1 |
+| E14 | WhatsApp de atención y horarios | Sprint 1 |
+| E15 | 3 a 5 productores dispuestos a dar testimonio | Sprint 6 |
 
-1. ¿Cuántos pedidos por mes maneja JB hoy? ¿Y cuál es el ticket promedio?
-2. ¿Qué proporción es minorista y qué proporción mayorista?
-3. ¿Cuánto tiempo se dedica hoy a atender pedidos por WhatsApp?
-4. ¿Cuál es el radio geográfico actual y hasta dónde se quiere llegar?
-5. ¿Cuáles son los 10 productos que más se venden?
-6. ¿Hay estacionalidad? (¿fiestas, verano, ciclos de producción?)
-7. ¿Quiénes son los competidores y venden online?
-8. ¿Hay un objetivo concreto de ventas para el primer año de la web?
-9. ¿Quién de JB va a administrar la plataforma día a día? ¿Qué tan cómodo se
-   siente con la tecnología?
-10. ¿Hay presupuesto asignado para publicidad digital al lanzar? Sin tráfico, la
-    mejor web del mundo no vende.
+> **E5 es el que más trabajo te va a dar y el que más valor tiene.** Es tu mapa
+> logístico, y hoy está en la cabeza de quien atiende el WhatsApp. Pasarlo a una
+> tabla es lo que permite que la web responda "sí, mandamos a tu ciudad" sin que
+> intervenga nadie. No hace falta que esté completo para arrancar: se puede
+> empezar con los 10 destinos más frecuentes y crecer con el uso.
+
+---
+
+## F · Preguntas de negocio que ayudan a priorizar
+
+No bloquean, pero cambian dónde se pone el esfuerzo:
+
+1. ¿Cuántos pollitos vendés por mes, aproximadamente?
+2. ¿Qué proporción va a granjas grandes y qué proporción a productores chicos?
+3. ¿Qué proporción es Córdoba y qué proporción el resto del país?
+4. ¿Cuánto tiempo por día se dedica a atender pedidos por WhatsApp?
+5. ¿Cuál de las cuatro líneas se vende más?
+6. ¿Hay estacionalidad? ¿Se cría más en alguna época del año?
+7. ¿Tus competidores venden online?
+8. ¿Quién de JB va a administrar la plataforma día a día?
+9. ¿Hay presupuesto para publicidad digital al lanzar? Sin tráfico, la mejor web
+   del mundo no vende.
 
 ---
 
 ## Cómo responder
 
-No hace falta un documento formal. Alcanza con contestar en línea, aunque sea
-"no sé todavía" — eso también es información útil.
+Como venías: contestando de corrido, sin formato. Alcanza con eso.
 
-**Prioridad: A1, A2 y A3.** Con esas tres respuestas ya se puede cerrar el
-alcance de la Fase 1 y empezar el diseño en Figma.
+**La prioritaria es B1 (los nacimientos).** De esa respuesta depende si seguimos
+con plataforma propia o si te conviene evaluar algo más simple y barato — y eso
+es mejor saberlo ahora que dentro de tres meses.

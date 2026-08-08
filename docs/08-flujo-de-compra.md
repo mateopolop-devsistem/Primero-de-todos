@@ -3,54 +3,81 @@
 ## 1. Vista general
 
 ```
-DESCUBRIMIENTO → EXPLORACIÓN → CARRITO → CHECKOUT → PAGO
-      → PREPARACIÓN → PESAJE Y AJUSTE → ENTREGA → POSVENTA
+DESCUBRIMIENTO → ASESORAMIENTO → ELECCIÓN DE FECHA → CARRITO
+   → CHECKOUT (producto + logística) → PAGO
+   → ESPERA (SCHEDULED) → NACIMIENTO → ENCAJONADO → DESPACHO
+   → RETIRO / ENTREGA → CRIANZA (posventa)
 ```
 
-Los pasos 1 a 5 los hace el cliente. Los pasos 6 a 8 los hace JB. El paso 7 es el
-que distingue esta plataforma de un e-commerce genérico.
+Dos diferencias estructurales con un e-commerce común:
+
+1. **Se compra una fecha futura, no un producto en stock.** El pedido vive
+   semanas en estado `SCHEDULED`.
+2. **JB casi nunca es quien transporta.** Despacha a una agencia y el cliente
+   retira en destino, muchas veces pagando el flete ahí.
 
 ---
 
 ## 2. Del catálogo al carrito
 
+### El asesor de compra (entrada alternativa al catálogo)
+
+```
+¿Para qué querés los pollitos?
+  ○ Vender a carnicería / pollo de chacra
+  ○ Vender a parrilladas
+  ○ Producir huevos
+  ○ Consumo propio / patio
+        ↓
+¿Cuántos pensás criar?     [ 50 · 100 · 500 · 1000+ ]
+        ↓
+¿Es tu primera vez?        [ Sí / No ]
+        ↓
+RECOMENDACIÓN
+  · línea sugerida, con el motivo explicado en criollo
+  · fechas de nacimiento disponibles
+  · si es primera vez → kit de arranque
+  · si es volumen alto → invitación a cuenta mayorista
+```
+
+La lógica sale de `chick_specs`: `target_market` y `crate_count` conectan la
+pregunta comercial ("¿a quién le vendés?") con el producto correcto.
+
 ### Agregar un producto
 
 ```
-Cliente toca [Agregar al carrito]
+Cliente toca [Reservar] o [Agregar]
    │
    ├─ ¿Hay carrito?  No → crear carrito + cookie httpOnly (30 días)
    │
    ├─ Validaciones del servidor (nunca del navegador):
    │     · producto ACTIVE y no borrado
-   │     · cantidad ≥ min_order_qty y múltiplo de qty_step
-   │     · si wholesale_only → cliente mayorista aprobado
-   │     · stock disponible ≥ cantidad  (o allow_backorder)
+   │     · cantidad >= min_order_qty (50) y múltiplo de qty_step (50)
+   │     · si wholesale_only → mayorista aprobado
+   │     · si es pollito → camada OPEN, no vencida, con cupo suficiente
+   │     · si es insumo  → stock disponible
    │
    ├─ Resolver PRECIO en el servidor (pricing)
-   │     lista del grupo → escala por volumen → descuento → promo
+   │     lista del grupo → escala por cantidad → descuento → promo
    │
-   ├─ Si is_variable_weight:
-   │     peso_estimado = avg_weight_grams × cantidad
-   │     subtotal = precio_por_kg × peso_estimado / 1000
+   ├─ RESERVAR (transacción con SELECT ... FOR UPDATE)
+   │     pollitos → hatch_batches.reserved += cantidad
+   │     insumos  → stock_items.reserved  += cantidad
+   │     carts.reserved_until = ahora + 30 min
    │
-   ├─ RESERVAR stock (transacción con bloqueo de fila)
-   │     stock_items.reserved += cantidad
-   │     carts.reserved_until = ahora + 20 min
-   │
-   ├─ Recalcular totales del carrito
-   └─ Revalidar y abrir el drawer
+   ├─ Recalcular totales
+   └─ Abrir el drawer con la fecha comprometida bien visible
 ```
 
-**Por qué reservar desde el carrito:** en productos frescos con stock limitado
-(y sobre todo en camadas), no reservar produce el peor error posible: confirmar
-una venta que no se puede cumplir. La reserva vence a los 20 minutos y una tarea
-programada la libera.
+> **Por qué la reserva es innegociable acá:** el cupo de una camada es físico y
+> finito. Comprometer 1.200 pollitos de una camada de 1.000 no se arregla con
+> una disculpa: deja a un productor con el galpón vacío y una pérdida que no
+> recupera. Es el peor error posible del sistema.
 
-### Recálculo permanente
-Cada vez que se abre el carrito se revalidan precios y stock. Si algo cambió, se
-informa de forma explícita: *"El precio del pollo entero se actualizó a
-$4.350/kg"* o *"Sólo quedan 12 unidades disponibles"*.
+### Validación de mezcla de fechas
+Si el carrito tiene pollitos de dos camadas distintas, se avisa de forma
+explícita: *"Tu pedido tiene dos fechas de nacimiento (12/09 y 26/09). Se
+despachan por separado."* Y se permite separarlo en dos pedidos.
 
 ---
 
@@ -59,259 +86,309 @@ $4.350/kg"* o *"Sólo quedan 12 unidades disponibles"*.
 ```
 [Finalizar compra]
    │
-   ├─ Revalidar TODO el carrito (precios, stock, vigencia)
+   ├─ Revalidar TODO (precios, cupo de camada, vigencia)
    │     algo cambió → volver al carrito con el detalle
    │
    ├─ BLOQUE 1 · CONTACTO
-   │     email + teléfono · sin registro obligatorio
+   │     email + teléfono/WhatsApp · sin registro obligatorio
    │     si pide factura A → CUIT + razón social + condición IVA
    │
-   ├─ BLOQUE 2 · ENTREGA
-   │     ├─ Envío a domicilio
-   │     │    CP → zona → métodos disponibles
-   │     │    ⚠ si algún ítem requires_cold_chain:
-   │     │        sólo métodos con supports_cold_chain
-   │     │    elegir día y franja (delivery_slots con cupo)
-   │     └─ Retiro en planta
-   │          elegir día y horario, sin costo
+   ├─ BLOQUE 2 · CÓMO LO RECIBÍS          ← el bloque crítico
+   │     ○ Retiro en planta
+   │     ○ Reparto propio (Córdoba)
+   │     ○ Despacho por transporte (resto del país)
    │
    ├─ BLOQUE 3 · PAGO
    │     ○ Mercado Pago     ○ Transferencia bancaria
    │
    └─ [Confirmar pedido]
-         │
          ├─ Validación final del servidor (Zod + reglas de negocio)
-         ├─ RECALCULAR el total completo desde cero
+         ├─ RECALCULAR el total desde cero
          │     el importe que llegó del navegador se IGNORA
-         ├─ Crear ORDER (status PENDING_PAYMENT) + order_items
-         │     congelando nombre, SKU y precio de cada ítem
+         ├─ Crear ORDER (PENDING_PAYMENT) + order_items
+         │     congelando nombre, SKU, precio y fecha de nacimiento
          ├─ Convertir reserva de carrito → reserva de pedido
-         ├─ Vaciar el carrito
          └─ Derivar según el medio de pago
 ```
 
 ---
 
-## 4. Pago
+## 4. Envíos: el punto crítico
 
-### 4.1 Mercado Pago (Checkout Pro, Fase 1)
+Un e-commerce común asume dos cosas que acá son falsas: que el vendedor controla
+el envío, y que el total que se paga es el total que cuesta. JB despacha a todo
+el país por transportes de terceros, y **el flete lo suele pagar el cliente al
+retirar**.
+
+### 4.1 Las tres modalidades
+
+| Modalidad | Cómo funciona | Flete |
+|---|---|---|
+| **Retiro en planta** | El cliente viene en la ventana de retiro | Sin costo |
+| **Reparto propio** | Recorridos por Córdoba, días fijos | Tarifa de JB, cobrada en el pedido |
+| **Transporte / comisionista** | JB despacha a la agencia; el cliente retira en destino | **Habitualmente a cargo del destinatario** |
+
+### 4.2 Cómo se resuelve el flete a pagar en destino
+
+Es la decisión de diseño más delicada del checkout. La regla:
+
+> **El total del pedido incluye sólo la mercadería. El flete se muestra como
+> estimado, claramente separado, con quién lo paga y cuándo.**
+
+```
+┌──────────────────────────────────────────────────────┐
+│ Despacho por transporte                              │
+│                                                      │
+│ Destino: La Banda, Santiago del Estero               │
+│ Transporte: Expreso del Norte                        │
+│ Sale: martes y viernes · Corte 18:00                 │
+│ Retirás en: Agencia Belgrano 450                     │
+│                                                      │
+│ ─────────────────────────────────────────────────    │
+│ Mercadería (lo que pagás ahora)        $XXX.XXX      │
+│                                                      │
+│ ⓘ Flete estimado $XX.XXX                             │
+│   Lo pagás al transporte cuando retirás.             │
+│   No está incluido en este total.                    │
+│   El monto lo define el transporte.                  │
+└──────────────────────────────────────────────────────┘
+```
+
+Tres reglas para que esto no genere reclamos:
+
+1. **La palabra "estimado" siempre acompañada de quién define el monto.** JB no
+   fija el flete y no puede garantizarlo.
+2. **Se repite en tres lugares:** checkout, confirmación y email. La queja
+   "nadie me dijo que el flete se pagaba aparte" sólo se evita repitiéndolo.
+3. **Si JB tiene tarifa acordada con un transporte**, se marca
+   `freight_payment = PREPAID`, se cobra en el pedido y desaparece toda la
+   ambigüedad. Es preferible donde sea posible.
+
+### 4.3 El cruce fecha de nacimiento × día de salida ⚠
+
+La restricción central de la logística, y la que ningún e-commerce estándar
+modela:
+
+```
+El pollito recién nacido tiene reserva de saco vitelino por ~72 h.
+No puede esperar a que salga el transporte.
+
+REGLA:
+  camada.hatch_date + margen_operativo
+      ⋂  carrier_destination.departure_days
+      → fechas de despacho válidas
+
+Ejemplo:
+  Camada nace jueves 12/09
+  Expreso del Norte a La Banda sale martes y viernes
+  → Única opción viable: viernes 13/09
+  → Si el cliente elige un transporte que sale el martes siguiente,
+    el sistema lo BLOQUEA con explicación:
+    "Ese transporte sale recién el 17/09, 5 días después del
+     nacimiento. No podemos despachar pollitos con esa demora.
+     Opciones: Expreso X (sale el 13) o la camada del 26/09."
+```
+
+Bloquear una venta imposible es más valioso que aceptarla: la alternativa es un
+cliente que recibe una caja de pollitos muertos.
+
+### 4.4 Selección de transporte en el checkout
+
+```
+Provincia [ Santiago del Estero ▾ ]   Ciudad [ La Banda ▾ ]
+              ↓
+Transportes disponibles a La Banda:
+
+  ● Expreso del Norte      sale mar y vie · llega en 18 h
+    Agencia Belgrano 450 · flete estimado $XX.XXX (pagás al retirar)
+    ✓ Compatible con la camada del 12/09
+
+  ○ Transporte Sur         sale lun · llega en 24 h
+    ⚠ No compatible: sale 5 días después del nacimiento
+
+  ○ No está mi ciudad / prefiero coordinar
+    → deja el pedido en "logística a coordinar" y avisa al panel
+```
+
+La última opción es importante: el mapa de transportes nunca va a estar completo
+desde el día uno. Se construye con el uso, y cada pedido "a coordinar" alimenta
+la tabla `carrier_destinations`.
+
+---
+
+## 5. Pago
+
+### 5.1 Mercado Pago (Checkout Pro, Fase 1)
 
 ```
 Se crea la PREFERENCIA en el servidor
   · items, importes, external_reference = order.id
   · back_urls: éxito / pendiente / error
   · notification_url = /api/webhooks/mercadopago
-  · expiración: 30 min (alineada con la reserva de stock)
-        │
+  · expiración alineada con la reserva de cupo
         ▼
-Redirección a Mercado Pago  →  el cliente paga
+Redirección a Mercado Pago → el cliente paga
         │
-        ├──────────────── camino A (confiable) ────────────────┐
-        │  WEBHOOK  POST /api/webhooks/mercadopago             │
-        │  1. Verificar firma HMAC          → si falla, 401    │
-        │  2. ¿event_id ya procesado?       → si sí, 200 y fin │
-        │  3. Consultar la API de MP el pago real              │
-        │     (nunca se confía en el payload del webhook)      │
-        │  4. Según el estado:                                 │
-        │       approved  → confirmarPedido()                  │
-        │       rejected  → liberar stock, avisar al cliente   │
-        │       pending   → dejar PENDING, notificar           │
-        │       refunded  → registrar reembolso                │
-        │  5. Registrar en payment_events y responder 200      │
-        └──────────────────────────────────────────────────────┘
+        ├──────────── camino A (el confiable) ────────────────┐
+        │  WEBHOOK  POST /api/webhooks/mercadopago            │
+        │  1. Verificar firma HMAC        → si falla, 401     │
+        │  2. ¿event_id ya procesado?     → si sí, 200 y fin  │
+        │  3. Consultar la API de MP el pago real             │
+        │     (nunca se confía en el payload del webhook)     │
+        │  4. approved → confirmarPedido()                    │
+        │     rejected → liberar cupo, avisar                 │
+        │     pending  → mantener reserva, notificar          │
+        │  5. Registrar en payment_events y responder 200     │
+        └─────────────────────────────────────────────────────┘
         │
-        └── camino B (sólo visual) ────────────────────────────┐
-           Vuelve a /checkout/confirmacion/[orderNumber]        │
-           NO se marca pagado desde acá: la redirección es      │
-           manipulable. Si el webhook aún no llegó, se muestra  │
-           "Estamos confirmando tu pago" y se consulta cada 3 s │
-           ───────────────────────────────────────────────────-─┘
+        └── camino B (sólo visual) ───────────────────────────┐
+           Vuelve a /checkout/confirmacion/[orderNumber].      │
+           NO se marca pagado desde acá: la redirección es     │
+           manipulable. Si el webhook no llegó, se muestra     │
+           "Estamos confirmando tu pago" y se consulta.        │
+           ──────────────────────────────────────────────────-─┘
 ```
 
 **Red de seguridad:** una tarea diaria consulta a Mercado Pago todos los pedidos
-`PENDING_PAYMENT` de las últimas 48 h. Los webhooks a veces no llegan; la
-conciliación evita perder ventas ya cobradas.
+`PENDING_PAYMENT` de las últimas 48 h. Los webhooks a veces no llegan.
 
-### 4.2 Transferencia bancaria
+### 5.2 Transferencia bancaria
+
+Es el medio dominante en B2B y el que evita la comisión en tickets altos.
 
 ```
 Confirma el pedido
    ↓
 Pantalla + email con: CBU · alias · titular · CUIT · monto EXACTO
    ↓
-Pedido en PENDING_PAYMENT · stock reservado 48 h (no 20 min)
+PENDING_PAYMENT · cupo reservado 48 h
    ↓
-El cliente sube el comprobante (desde la confirmación o su cuenta)
+El cliente sube el comprobante
    ↓
-Estado → PAYMENT_IN_REVIEW · aviso interno al panel
+PAYMENT_IN_REVIEW · aviso al panel
    ↓
-JB valida en el panel: [Aprobar] / [Rechazar + motivo]
+JB valida: [Aprobar] / [Rechazar + motivo]
    ↓
-Aprobado → confirmarPedido()   Rechazado → email con el motivo
+Aprobado → confirmarPedido()
    ↓
-Si a las 48 h no hay comprobante: recordatorio a las 24 h,
-cancelación automática y liberación de stock a las 48 h
+Sin comprobante: recordatorio a las 24 h,
+liberación automática del cupo a las 48 h
 ```
 
-**Por qué es importante:** en tickets B2B altos, la comisión de Mercado Pago es
-significativa. El descuento por transferencia (sugerido: 5%) beneficia a ambas
-partes y es la forma de pago que este público ya usa.
+> **Ajuste por proximidad de la camada:** si faltan menos de 48 h para el
+> `order_deadline`, el plazo de pago se acorta automáticamente. No tiene sentido
+> retener cupo de una camada que cierra mañana.
 
-### 4.3 `confirmarPedido()` — única función de confirmación
+### 5.3 `confirmarPedido()` — única función de confirmación
 
 ```
 TRANSACCIÓN
-  1. order.status → CONFIRMED, payment_status → PAID, paid_at
-  2. Convertir reserva en descuento real de stock
-       stock_items.quantity -= cantidad
-       stock_items.reserved -= cantidad
-       insertar stock_movements (type = SALE)
-  3. Si hay camada → hatch_batches.reserved += cantidad
-  4. Registrar en order_status_history
-  5. Incrementar métricas (sales_count, totales del cliente)
+  1. order.status → CONFIRMED → SCHEDULED, payment_status → PAID
+  2. Convertir la reserva en compromiso firme
+       pollitos: hatch_batches.reserved queda confirmado
+       insumos:  stock_items.quantity -= cantidad
+                 insertar stock_movements (type = SALE)
+  3. Registrar en order_status_history
+  4. Incrementar métricas
 COMMIT
        ↓
 EVENTOS (asíncronos, fuera de la transacción)
-  → email de confirmación
+  → email de confirmación con fecha de nacimiento y datos de despacho
   → WhatsApp (Fase 2)
   → aviso interno
-  → creación del envío
+  → guía de crianza si es cliente primerizo
   → factura electrónica (Fase 3)
 ```
 
 **Idempotente por diseño:** si el webhook llega dos veces, la segunda no hace
-nada. Es la protección contra el doble descuento de stock.
+nada.
 
 ---
 
-## 5. El problema del peso variable
+## 6. La espera: de la compra al nacimiento
 
-### El conflicto
-
-| Realidad de JB | Restricción técnica |
-|---|---|
-| El pollo se vende por kilo | Mercado Pago necesita un importe fijo al cobrar |
-| El peso real se conoce al preparar | El cobro ocurre antes de preparar |
-| Un pollo puede pesar 2,2 o 2,6 kg | El cliente no acepta que le cobren distinto sin aviso |
-
-### Las cuatro opciones evaluadas
-
-| Opción | Cómo funciona | Veredicto |
-|---|---|---|
-| **A · Precio por unidad fijo** | Se vende "pollo entero $10.000", sin importar el peso | Simplísimo, pero JB pierde margen en los pesados o pierde clientes en los livianos. Sólo sirve si el proveedor entrega rangos muy parejos |
-| **B · Estimado + ajuste** ✅ | Se cobra el estimado, se pesa, se ajusta la diferencia | **Recomendada.** Refleja la realidad del negocio y es transparente |
-| **C · Preautorización y captura** | Se retiene el monto y se captura el real | Técnicamente elegante, pero el soporte de captura parcial en Mercado Pago es limitado y complica el flujo. No recomendada en Fase 1 |
-| **D · Rangos de peso como variantes** | "Pollo 2,0–2,4 kg" a precio cerrado | Buen intermedio si el pesaje individual es viable antes de publicar. Alto costo operativo |
-
-### Opción B en detalle — recomendada
+Este período —que puede ser de 2 a 5 semanas— es donde un e-commerce común no
+tiene nada que decir y donde JB puede diferenciarse.
 
 ```
-COMPRA
-  Cliente pide 20 pollos
-  Peso estimado: 20 × 2.400 g = 48.000 g = 48 kg
-  Total estimado: 48 × $4.200 = $201.600
-  → SE COBRA $201.600 (+ envío)
-  Se muestra en todo momento: "estimado, ±10%"
-
-PREPARACIÓN (panel · pantalla de pesaje)
-  El operario carga el peso real: 47.600 g
-  El sistema calcula: 47,6 × $4.200 = $199.920
-  Diferencia: −$1.680  (a favor del cliente)
-      ↓
-REGLA DE RESOLUCIÓN AUTOMÁTICA
-  ┌────────────────────────────────────────────────────────┐
-  │ Diferencia a FAVOR del cliente (pesó menos)            │
-  │   · ≤ $2.000  → crédito para la próxima compra         │
-  │                 (o reembolso si el cliente lo pide)    │
-  │   · > $2.000  → reembolso parcial automático por MP    │
-  │                                                        │
-  │ Diferencia a favor de JB (pesó más)                    │
-  │   · dentro de la tolerancia (±10%) y ≤ $2.000          │
-  │             → se absorbe, NO se cobra                  │
-  │   · > $2.000 → se pide autorización al cliente con     │
-  │                link de pago de la diferencia.          │
-  │                Sin respuesta en 24 h → se entrega el   │
-  │                peso equivalente a lo pagado            │
-  └────────────────────────────────────────────────────────┘
-      ↓
-NOTIFICACIÓN (siempre, aunque no haya diferencia)
-  Email + WhatsApp con estimado, real, diferencia y resolución
-      ↓
-ENTREGA con el detalle impreso o digital
+SCHEDULED
+   │
+   ├─ Inmediato: confirmación con fecha comprometida
+   ├─ Si es primerizo: guía "Cómo preparar la llegada del pollito"
+   ├─ 7 días antes: "Preparate — temperatura, comederos, viruta"
+   ├─ 48 h antes: recordatorio con transporte, agencia y horario
+   │
+   ▼
+HATCHED (nació la camada)
+   ├─ Se carga `actual_hatched`
+   ├─ Si nacieron menos de los comprometidos → protocolo de faltante
+   │     · se avisa proactivamente, no cuando el cliente reclama
+   │     · opciones: completar con la camada siguiente, entrega parcial
+   │       con reintegro proporcional, o reintegro total
+   ▼
+READY (contado y encajonado, con los pollitos de yapa por mortandad)
+   ▼
+DISPATCHED / IN_TRANSIT / PICKUP_READY
+   ├─ Transporte → se carga el número de guía → WhatsApp + email al instante
+   ├─ Reparto propio → hoja de ruta del día
+   └─ Retiro → aviso "ya podés retirar"
+   ▼
+DELIVERED
 ```
 
-**Por qué se absorben las diferencias chicas a favor de JB:** cobrar $800 extra
-genera un reclamo, una llamada y desconfianza que cuestan más que $800. Absorberlas
-y comunicarlo ("si pesa un poco más, no te cobramos de más") es además un
-argumento comercial fuerte. El umbral es configurable desde el panel.
-
-**Decisión pendiente:** el umbral de $2.000 y la tolerancia del 10% son
-propuestas. Ver documento 11.
+**El aviso proactivo de faltante es una decisión de negocio, no técnica.** Un
+productor al que le avisan con 5 días de anticipación reacomoda su plan. Uno que
+se entera el día del retiro pierde el ciclo y no vuelve a comprar.
 
 ---
 
-## 6. Preparación y entrega
+## 7. Posventa: mortandad y crianza
+
+### Reclamo por mortandad
 
 ```
-CONFIRMED
-   ↓  JB toma el pedido
-PREPARING
-   ↓  se arma físicamente
-   ├─ productos de peso variable → pantalla de pesaje → WEIGHED
-   ├─ faltante de stock → sustituir (con aviso) o cancelar el ítem
-   └─ registro del lote entregado (trazabilidad)
+El cliente retira y encuentra animales muertos
    ↓
-READY
-   ├─ Retiro en planta → aviso al cliente "ya podés retirar"
-   └─ Reparto propio   → se asigna a la hoja de ruta del día
+Desde su cuenta: [Reportar problema] en el pedido
    ↓
-IN_TRANSIT   (aviso con franja horaria)
+Formulario: cantidad + fotos + fecha y hora de retiro
    ↓
-DELIVERED    (comprobante: foto o firma) + email de agradecimiento
+Se crea order_adjustment (type = MORTALITY_CLAIM)
+   ↓
+JB evalúa en el panel dentro de las 24 h
+   ↓
+Resolución: reposición en la próxima camada · crédito ·
+            reintegro parcial · rechazo fundado
+   ↓
+Notificación con el motivo de la decisión
 ```
 
-### Hoja de ruta (panel)
-Los pedidos `READY` con entrega en la fecha se agrupan por zona, se ordenan y
-generan una hoja imprimible o vista mobile para el repartidor, con dirección,
-teléfono, ítems, total y forma de pago.
+**Requisitos que hacen que esto funcione:** política escrita y visible **antes**
+de comprar (plazo para reclamar, qué evidencia hace falta, qué cubre y qué no),
+y el `mortality_bonus_pct` declarado desde el principio — *"enviamos un 3%
+adicional sin cargo para cubrir la mortandad de viaje"*.
+
+### Acompañamiento de la crianza
+
+Secuencia automática por email y WhatsApp según los días transcurridos:
+recepción, primera semana (temperatura), cambio de alimento, plan sanitario, y
+—según `grow_out_days`— el aviso de recompra en el momento exacto del ciclo.
+
+Esto no es marketing: es lo que baja la mortandad del cliente, y un cliente cuya
+crianza sale bien vuelve a comprar.
 
 ---
 
-## 7. Flujo de camadas (pollitos BB)
-
-```
-JB publica la camada: fecha de nacimiento, capacidad, límite, ventana de retiro
-   ↓
-Cliente reserva N pollitos  →  hatch_batches.reserved += N
-   ↓
-PAGO (mismo flujo)  →  pedido en estado SCHEDULED
-   ↓
-Al llegar el order_deadline → camada CLOSED, se cierra la reserva
-   ↓
-48 h antes del retiro → recordatorio automático
-   ↓
-Nacimiento → HATCHED → pedidos pasan a READY
-   ↓
-Retiro en la ventana definida → DELIVERED
-
-Si la camada se cancela o falla:
-   → reembolso automático + reasignación ofrecida a la camada siguiente
-```
-
-Este flujo es el que más fideliza al cliente B2B: quien reserva su camada con
-JB planifica su producción con JB.
-
----
-
-## 8. Cancelaciones y devoluciones
+## 8. Cancelaciones
 
 | Situación | Regla |
 |---|---|
-| Cliente cancela antes de preparar | Automático desde su cuenta. Reembolso total, stock liberado |
-| Cliente cancela ya preparado | Requiere aprobación de JB. Producto fresco: puede no reembolsarse |
-| JB cancela por falta de stock | Reembolso total automático + aviso + compensación sugerida |
-| Producto en mal estado | Reclamo con foto desde la cuenta → evaluación → reembolso o reposición |
-| Botón de arrepentimiento (10 días) | Obligatorio por ley. Con la salvedad legal de productos perecederos, que deben estar declarados en los términos |
+| Cliente cancela antes del `order_deadline` | Automático. Reintegro total, cupo liberado |
+| Cliente cancela después del cierre de camada | Requiere aprobación. El cupo ya está comprometido con la incubación |
+| Cliente cancela después del nacimiento | Sin reintegro salvo excepción comercial. El animal ya existe |
+| JB cancela por camada fallida | Reintegro total automático + prioridad en la camada siguiente |
+| Nacieron menos de los comprometidos | Entrega parcial con reintegro proporcional, o pase a la camada siguiente, a elección del cliente |
+| Botón de arrepentimiento (10 días) | Obligatorio por ley. Aplica antes del despacho; los términos deben declarar la excepción de animales vivos ya despachados |
 
 ---
 
@@ -319,13 +396,14 @@ JB planifica su producción con JB.
 
 | Falla | Manejo |
 |---|---|
-| El webhook de MP no llega | Conciliación diaria + consulta desde la pantalla de confirmación |
-| El cliente cierra el navegador al pagar | El pedido existe; el webhook lo confirma igual y avisa por email |
-| Dos clientes compran la última unidad | La reserva con bloqueo transaccional impide la sobreventa |
-| El precio cambió durante la sesión | Revalidación en el checkout con aviso explícito |
+| El webhook de MP no llega | Conciliación diaria + consulta desde la confirmación |
+| El cliente cierra el navegador al pagar | El pedido existe; el webhook lo confirma igual |
+| Dos clientes toman el último cupo | Reserva con bloqueo transaccional |
+| La camada nace incompleta | Protocolo de faltante con aviso proactivo |
+| El transporte no sale ese día | Aviso + reprogramación + opción de reintegro |
+| El cliente no retira de la agencia | Aviso a las 24 h y a las 48 h; el animal vivo no espera |
 | El email de confirmación falla | Encolado con reintentos; nunca bloquea la compra |
 | Caída de Mercado Pago | Se sigue ofreciendo transferencia; aviso visible |
-| Pedido pagado sin stock real | Aviso proactivo con opciones: esperar, sustituir o reembolsar |
 
 ---
 
@@ -333,13 +411,16 @@ JB planifica su producción con JB.
 
 | Etapa | Métrica | Objetivo Fase 1 |
 |---|---|---|
-| Visita → catálogo | % que ve productos | > 60% |
-| Catálogo → ficha | % de clic en producto | > 35% |
-| Ficha → carrito | Tasa de agregado | > 12% |
-| Carrito → checkout | % que inicia el checkout | > 45% |
+| Visita → catálogo o asesor | % que avanza | > 60% |
+| Asesor iniciado → completado | % que termina las 3 preguntas | > 70% |
+| Catálogo → ficha | % de clic | > 35% |
+| **Consulta de transporte → carrito** | conversión del cliente del interior | > 25% |
+| Ficha → carrito | tasa de agregado | > 12% |
+| Carrito → checkout | % que inicia | > 45% |
 | Checkout → pago | % que confirma | > 70% |
-| **Global** | **Tasa de conversión** | **1,5–2,5%** |
-| Posventa | Recompra a 90 días | > 30% |
+| **Global** | **tasa de conversión** | **1,5–2,5%** |
+| Posventa | recompra dentro de 1,5 ciclos productivos | > 35% |
 
-Cada etapa se instrumenta con eventos desde el día uno. Sin medición no hay
-optimización posible.
+La consulta de transporte se instrumenta como evento propio: es el momento de
+verdad del cliente del interior, y su tasa de abandono dice si el problema es el
+precio del flete o la falta de cobertura.

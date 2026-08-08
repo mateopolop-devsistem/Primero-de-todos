@@ -1,7 +1,7 @@
 # Plataforma Web JB
 
 Planificación técnica y de producto para la plataforma de e-commerce de **JB** —
-producción, distribución y comercialización de pollos + venta de insumos avícolas.
+producción y venta de **pollito bebé (BB)** y de insumos avícolas.
 
 > **Estado del proyecto: PLANIFICACIÓN.** Este repositorio todavía no contiene
 > código de aplicación. El objetivo de esta etapa es validar decisiones antes de
@@ -9,48 +9,88 @@ producción, distribución y comercialización de pollos + venta de insumos aví
 
 ---
 
+## Qué vende JB (y qué no)
+
+Esta definición es la base de todo el resto del documento, y corrige un
+malentendido de la primera versión de esta planificación.
+
+```
+   JB  ───►  GRANJA / PRODUCTOR  ───►  FAENA  ───►  CARNICERÍA / PARRILLADA
+   │              │
+   │              └─ engorda 45 a 90 días según la línea
+   │
+   └─ vende POLLITO BEBÉ de un día (45 g o más) + insumos para criarlo
+```
+
+**JB está arriba en la cadena.** Vende el animal vivo de un día de vida, no carne.
+Consecuencias directas sobre el diseño del sistema:
+
+| Lo que NO aplica | Lo que SÍ aplica |
+|---|---|
+| Precio por kilo | Precio **por unidad**, con escalas por cantidad |
+| Peso variable y ajuste posterior | Precio cerrado y conocido al comprar |
+| Cadena de frío | **Cadena de calor**: el pollito viaja y se cría a 32-35 °C |
+| Cortes, pollo entero, congelado | Líneas genéticas: parrillero, ponedora, campero, ecológico |
+| Reparto refrigerado local | **Despacho a todo el país** por transporte y comisionistas |
+| Vencimiento y lotes de carne | Fecha de nacimiento, sexado, plan sanitario |
+
+---
+
 ## Resumen ejecutivo
 
-JB no necesita "una página web": necesita un **canal de venta online** que reemplace
-el flujo actual de *WhatsApp → pedir catálogo → pasar precios → coordinar pago*.
-Ese flujo hoy tiene tres costos ocultos:
+JB no necesita "una página web": necesita un **canal de venta online** que
+reemplace el flujo actual de *WhatsApp → pedir catálogo → pasar precios →
+coordinar pago → coordinar transporte*. Ese flujo hoy tiene tres costos ocultos:
 
 1. **No escala.** Cada venta consume tiempo humano. Duplicar ventas implica
    duplicar personas atendiendo el teléfono.
-2. **Pierde clientes fuera de horario.** El 100% de la demanda nocturna y de fin
-   de semana se cae o se demora.
-3. **No deja datos.** No hay historial de compra, ni recompra automática, ni
-   segmentación, ni forma de saber qué producto se busca y no se encuentra.
+2. **Pierde clientes fuera de horario**, y sobre todo pierde a los que están
+   lejos: hoy el cliente de otra provincia tiene que confiar en un desconocido
+   por WhatsApp para mandarle plata y esperar un encargo.
+3. **No deja datos.** No hay historial, ni recompra, ni forma de saber que un
+   cliente que compraba 500 parrilleros por mes dejó de comprar.
 
-La plataforma ataca esos tres puntos. Todo lo demás (diseño, animaciones, blog)
-es secundario frente a eso.
+### Las tres decisiones que ordenan la arquitectura
 
-### La decisión más importante del proyecto
+**1 · El producto se vende por unidad, en múltiplos.**
+Mínimo 50 pollitos, de a 50 o de a 100. Sin peso variable. Esto **simplifica
+enormemente** el sistema respecto de la versión anterior de este plan: el precio
+es cerrado, el checkout es estándar y desaparece toda la maquinaria de ajuste
+posterior. Lo que sí hace falta es un motor de **escalas por cantidad**
+(50 / 100 / 500 / 1.000+) y de **múltiplos obligatorios** de compra.
 
-**El pollo se vende por peso y el peso real se conoce recién al preparar el pedido.**
-Un e-commerce tradicional asume precio fijo por unidad. Acá no. Esto condiciona:
-el modelo de datos, el checkout, el cobro con Mercado Pago, la facturación y el
-panel administrativo.
+**2 · El envío es a todo el país, por transporte de terceros.**
+Este es ahora el punto logístico crítico, y no se parece en nada a un e-commerce
+común. Hay tres modalidades y la tercera es la dominante:
 
-La solución propuesta es el modelo de **peso estimado + ajuste por peso real**,
-documentado en detalle en [`docs/08-flujo-de-compra.md`](docs/08-flujo-de-compra.md#5-el-problema-del-peso-variable).
+| Modalidad | Cómo funciona |
+|---|---|
+| Retiro en planta | El cliente viene |
+| Reparto propio | Recorridos por Córdoba, en días fijos |
+| **Transporte / comisionista** | JB despacha a la agencia o terminal; el cliente retira en destino. **El flete lo suele pagar el cliente al retirar** |
 
-### La segunda decisión más importante
+Que el flete se pague en destino y no se conozca al momento de comprar rompe el
+supuesto básico de cualquier plataforma de e-commerce (que el total es total).
+Está resuelto en [`docs/08-flujo-de-compra.md`](docs/08-flujo-de-compra.md#4-envíos-el-punto-crítico).
 
-JB vende a **dos públicos distintos con la misma plataforma**:
+**3 · El pollito es un ser vivo con fecha.**
+No es stock de depósito: nace un día determinado y tiene que salir ese día. La
+venta es **reserva contra fecha de nacimiento**. Esto define el catálogo, el
+checkout y la operación diaria.
 
-| | B2C / minorista | B2B / mayorista |
-|---|---|---|
-| Quién | Consumidor final, microemprendedor | Granjas, agropecuarias, veterinarias, revendedores |
-| Ticket | Bajo, esporádico | Alto, recurrente |
-| Precio | Lista pública, IVA incluido | Lista mayorista, precio neto + IVA |
-| Registro | Compra como invitado | Cuenta aprobada, CUIT, condición IVA |
-| Pago | Mercado Pago | Transferencia, eventualmente cuenta corriente |
-| Qué valora | Confianza, simplicidad | Velocidad, recompra, precio, disponibilidad |
+### La oportunidad que aparece del negocio
 
-Una sola tienda con **listas de precios por grupo de cliente** resuelve ambos sin
-duplicar catálogo ni mantener dos sitios. Es la decisión de arquitectura que más
-trabajo futuro evita.
+Un cliente nuevo no sabe qué pollito comprar. Lo que sabe es **a quién le va a
+vender**. La web puede traducir eso:
+
+> *¿A quién le vendés?*
+> **Carnicería / pollo de chacra** → pollo grande, ~3,2 kg, cajón nº 6 → línea X
+> **Parrillada** → pollo chico, ~2 kg, cajón nº 10 → línea Y
+> **Huevos** → ponedora
+> **Consumo propio / patio** → campero
+
+Ningún competidor hace esto. Es la diferencia entre un catálogo y un asesor, y
+es lo que justifica una plataforma propia en lugar de una tienda enlatada.
 
 ---
 
@@ -58,28 +98,24 @@ trabajo futuro evita.
 
 | # | Documento | Qué responde |
 |---|---|---|
-| 01 | [Arquitectura del sistema](docs/01-arquitectura.md) | Cómo se estructura el software, qué módulos hay, cómo se comunican |
+| 01 | [Arquitectura del sistema](docs/01-arquitectura.md) | Cómo se estructura el software, qué módulos hay |
 | 02 | [Estructura de carpetas](docs/02-estructura-carpetas.md) | Dónde va cada archivo y por qué |
-| 03 | [Stack tecnológico](docs/03-stack-tecnologico.md) | Qué tecnologías, con alternativas evaluadas y costos |
-| 04 | [Base de datos](docs/04-base-de-datos.md) | Modelo de datos completo, tabla por tabla |
-| 05 | [Experiencia de usuario (UX)](docs/05-ux.md) | Perfiles, recorridos, principios, fricciones a eliminar |
-| 06 | [Interfaz y design system (UI)](docs/06-ui-design-system.md) | Color, tipografía, espaciado, componentes |
-| 07 | [Estructura de pantallas](docs/07-pantallas.md) | Sección por sección, pantalla por pantalla |
-| 08 | [Flujo completo de compra](docs/08-flujo-de-compra.md) | Del catálogo a la entrega, incluidos pagos y peso variable |
+| 03 | [Stack tecnológico](docs/03-stack-tecnologico.md) | Qué tecnologías, alternativas y costos |
+| 04 | [Base de datos](docs/04-base-de-datos.md) | Modelo de datos completo |
+| 05 | [Experiencia de usuario (UX)](docs/05-ux.md) | Perfiles reales, recorridos, principios |
+| 06 | [Interfaz y design system (UI)](docs/06-ui-design-system.md) | Color, tipografía, componentes |
+| 07 | [Estructura de pantallas](docs/07-pantallas.md) | Pantalla por pantalla |
+| 08 | [Flujo completo de compra](docs/08-flujo-de-compra.md) | Del catálogo al despacho, incluidos pagos y transporte |
 | 09 | [Panel administrativo](docs/09-panel-admin.md) | Módulos, roles, operatoria diaria |
-| 10 | [Plan de desarrollo por fases](docs/10-plan-de-desarrollo.md) | Cronograma, sprints, criterios de aceptación |
-| 11 | [Decisiones a validar](docs/11-decisiones-a-validar.md) | **Empezar por acá.** Lo que necesito que definas |
+| 10 | [Plan de desarrollo por fases](docs/10-plan-de-desarrollo.md) | Cronograma y criterios de aceptación |
+| 11 | [Decisiones a validar](docs/11-decisiones-a-validar.md) | **Empezar por acá.** Lo que falta definir |
 
 ---
 
-## Cómo leer esto
-
-- Si tenés **15 minutos**: leé este README y el documento 11.
-- Si tenés **1 hora**: sumá los documentos 05, 07 y 08 (producto y experiencia).
-- Si sos **técnico**: 01, 03, 04 y 10.
-
 ## Próximo paso
 
-Responder el cuestionario de [`docs/11-decisiones-a-validar.md`](docs/11-decisiones-a-validar.md).
-Hay 6 decisiones bloqueantes ahí: sin ellas, cualquier código que escribamos tiene
-riesgo alto de rehacerse.
+Quedan 4 preguntas abiertas en
+[`docs/11-decisiones-a-validar.md`](docs/11-decisiones-a-validar.md).
+La principal: **cómo funcionan los nacimientos** (fechas fijas, frecuencia,
+anticipación de reserva). De eso depende si el catálogo muestra stock o muestra
+un calendario.

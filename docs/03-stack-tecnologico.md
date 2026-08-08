@@ -67,11 +67,11 @@ o 30 días) ni dominio.
 
 | Opción | Por qué no |
 |---|---|
-| **WordPress + WooCommerce** | Solución rápida y barata al inicio, pero el peso variable, las listas mayoristas y las reservas de camadas exigirían 6+ plugins de terceros y código a medida sobre ellos. Rendimiento mobile pobre, mantenimiento y seguridad permanentes. **Descartado por el modelo de negocio, no por prejuicio técnico.** |
-| **Tiendanube / Shopify** | Excelentes si JB vendiera productos de peso fijo. No modelan precio por kilo con ajuste posterior ni preventa por fecha de nacimiento sin apps caras y limitadas. Comisión sobre ventas. Reevaluable si se decide simplificar el modelo comercial |
+| **WordPress + WooCommerce** | Rápido y barato al inicio, pero las camadas por fecha, el cruce con los días de salida de los transportes y las escalas por cantidad exigirían 5+ plugins de terceros y código a medida sobre ellos. Rendimiento mobile pobre, mantenimiento y seguridad permanentes |
+| **Tiendanube / Shopify** | **La alternativa seria, y hay que decirlo con honestidad.** El precio por unidad cerrado —confirmado por el cliente— hace que el catálogo, el carrito y el pago encajen bien. Lo que no encaja es la reserva contra fecha de nacimiento con cupo, el cruce con los días de salida del transporte y el flete a cargo del destinatario. **Ver el análisis completo en [`11-decisiones-a-validar.md`](11-decisiones-a-validar.md#d--el-stack-revisado-con-honestidad): si resultara que JB tiene pollitos disponibles de forma continua y sin fechas, Tiendanube es la opción recomendada, más barata y más rápida.** |
 | **Astro** | Superior en sitios de contenido, más fricción en la parte interactiva y en el panel admin |
 | **Laravel + Vue** | Stack sólido, pero implica dos lenguajes y menos disponibilidad de desarrolladores en el segmento de precio de JB |
-| **Medusa.js / Vendure** | E-commerce headless serio, pero exige adaptar su modelo de precios para peso variable **y** además construir todo el frontend. Más complejidad total, no menos |
+| **Medusa.js / Vendure** | E-commerce headless serio, pero habría que construirle igual el módulo de camadas y el de transportes, **y** además todo el frontend. Más complejidad total, no menos |
 
 ### Base de datos
 
@@ -115,8 +115,9 @@ Fase 3, si el catálogo crece o hace falta búsqueda facetada compleja:
 | **Mercado Pago Checkout Bricks** | 2 | Pago embebido en el sitio. Mejora conversión ~5–10%, pero exige el flujo Pro ya estable |
 | **Transferencia bancaria** | 1 | CBU/alias + subida de comprobante + validación manual en el panel. Clave para B2B: evita la comisión de MP en tickets altos |
 | **WhatsApp Business Cloud API** | 2 | Notificación de estado del pedido por el canal que el cliente ya usa. Alta tasa de apertura |
-| **ARCA (ex AFIP) — facturación electrónica** | 3 | Vía **TusFacturas** o **Facturante**. IVA 10,5% en carne aviar vs. 21% en insumos: el modelo de datos ya lo contempla |
-| **Andreani / Correo Argentino / OCA** | 3 | Sólo si se vende fuera del radio de reparto propio. **Los pollos frescos requieren cadena de frío: reparto propio o retiro.** Los insumos secos sí pueden ir por correo |
+| **ARCA (ex AFIP) — facturación electrónica** | 3 | Vía **TusFacturas** o **Facturante**. Alícuota de IVA por producto: el modelo de datos ya lo contempla (pendiente de confirmar cuál corresponde al pollito BB) |
+| **Transportes y comisionistas** | **1** | No es una integración de API: es una **base de datos propia** de transportes, agencias de destino, días de salida y horas de corte. Ningún correo estándar transporta animales vivos, así que no hay integración que comprar — hay que modelarlo |
+| **Andreani / Correo Argentino / OCA** | 3 | Sólo para **insumos secos** (alimento, comederos, viruta). Nunca para pollitos |
 | **Google Merchant Center** | 2 | Feed de productos para Google Shopping. Fuente de tráfico de compra directa |
 | **Meta Pixel + API de Conversiones** | 2 | Remarketing en Instagram/Facebook, donde está el público avícola |
 
