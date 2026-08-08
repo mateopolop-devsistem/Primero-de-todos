@@ -73,10 +73,32 @@ Que el flete se pague en destino y no se conozca al momento de comprar rompe el
 supuesto básico de cualquier plataforma de e-commerce (que el total es total).
 Está resuelto en [`docs/08-flujo-de-compra.md`](docs/08-flujo-de-compra.md#4-envíos-el-punto-crítico).
 
-**3 · El pollito es un ser vivo con fecha.**
-No es stock de depósito: nace un día determinado y tiene que salir ese día. La
-venta es **reserva contra fecha de nacimiento**. Esto define el catálogo, el
-checkout y la operación diaria.
+**3 · El pollito nace un jueves, y no se sabe cuántos van a nacer.**
+No es stock de depósito: nace un día determinado y tiene que salir ese día. Y la
+cantidad real se conoce recién ese jueves, así que **JB vende de más a propósito**
+y ajusta según cómo venga. El sistema no pelea contra eso: lo modela.
+
+| Concepto | Qué es |
+|---|---|
+| `expected_hatch` | Lo que se espera que nazca — base de venta, **no un tope** |
+| `oversell_pct` | Cuánto se permite vender por encima |
+| `actual_hatched` | Lo que nació de verdad, el jueves |
+| `hatch_rate` | La relación entre ambos — **lo que el sistema aprende** |
+
+De ahí salen las tres funciones que ninguna tienda enlatada tiene:
+
+- **Sugerencia de sobreventa fundada en el historial.** Después de 10 o 15
+  camadas, el sistema sabe el rendimiento real por línea y su peor caso, y
+  reemplaza el "ir tanteando" por un número. La sugerencia nunca se aplica sola.
+- **Protocolo de faltante con simulación.** Si faltan 60 pollitos entre 14
+  pedidos, JB ve a quién le toca el recorte **antes** de confirmar, lo ajusta a
+  mano si quiere, y el aviso a los afectados sale automático.
+- **Protocolo de excedente.** Si nacen de más, la oferta sale en un clic a la
+  gente correcta y en orden: primero a los que quedaron cortos antes.
+
+Detalle que condiciona el catálogo: **hay clientes que reservan con 21 días y
+otros con 2**. Las reservas quedan abiertas hasta el día anterior; cerrar antes
+eliminaría toda la venta de último momento.
 
 ### La oportunidad que aparece del negocio
 
@@ -114,8 +136,12 @@ es lo que justifica una plataforma propia en lugar de una tienda enlatada.
 
 ## Próximo paso
 
-Quedan 4 preguntas abiertas en
-[`docs/11-decisiones-a-validar.md`](docs/11-decisiones-a-validar.md).
-La principal: **cómo funcionan los nacimientos** (fechas fijas, frecuencia,
-anticipación de reserva). De eso depende si el catálogo muestra stock o muestra
-un calendario.
+La decisión de fondo ya está tomada: **va plataforma propia**, porque la
+sobreventa controlada, el reparto de faltantes y el aprendizaje del rendimiento
+no existen en ninguna plataforma enlatada.
+
+Quedan preguntas menores en
+[`docs/11-decisiones-a-validar.md`](docs/11-decisiones-a-validar.md), ninguna
+bloqueante. Las tres más útiles: **quién se queda corto cuando faltan pollitos**,
+**si los insumos entran en la Fase 1**, y **si ya hay cuenta de Mercado Pago a
+nombre de la empresa**.

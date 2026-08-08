@@ -54,7 +54,8 @@ Cliente toca [Reservar] o [Agregar]
    │     · producto ACTIVE y no borrado
    │     · cantidad >= min_order_qty (50) y múltiplo de qty_step (50)
    │     · si wholesale_only → mayorista aprobado
-   │     · si es pollito → camada OPEN, no vencida, con cupo suficiente
+   │     · si es pollito → camada OPEN, no vencida,
+   │                        y `reserved + cantidad <= sellable`
    │     · si es insumo  → stock disponible
    │
    ├─ Resolver PRECIO en el servidor (pricing)
@@ -69,10 +70,15 @@ Cliente toca [Reservar] o [Agregar]
    └─ Abrir el drawer con la fecha comprometida bien visible
 ```
 
-> **Por qué la reserva es innegociable acá:** el cupo de una camada es físico y
-> finito. Comprometer 1.200 pollitos de una camada de 1.000 no se arregla con
-> una disculpa: deja a un productor con el galpón vacío y una pérdida que no
-> recupera. Es el peor error posible del sistema.
+> **El límite no es lo que va a nacer: es lo que JB decidió vender.** El
+> nacimiento real es incierto, así que se vende contra `expected_hatch` más un
+> margen de sobreventa (`oversell_pct`) que define JB. El sistema respeta ese
+> límite con bloqueo transaccional — no para impedir la sobreventa, sino para que
+> la sobreventa sea **la que JB eligió** y no el resultado de dos reservas
+> simultáneas que se pisaron.
+>
+> La protección del cliente no está acá: está en el protocolo de faltante y en
+> avisar temprano.
 
 ### Validación de mezcla de fechas
 Si el carrito tiene pollitos de dos camadas distintas, se avisa de forma
@@ -320,11 +326,11 @@ SCHEDULED
    │
    ▼
 HATCHED (nació la camada)
-   ├─ Se carga `actual_hatched`
-   ├─ Si nacieron menos de los comprometidos → protocolo de faltante
-   │     · se avisa proactivamente, no cuando el cliente reclama
-   │     · opciones: completar con la camada siguiente, entrega parcial
-   │       con reintegro proporcional, o reintegro total
+   ├─ Se carga `actual_hatched` → el sistema calcula `hatch_rate`
+   ├─ Nacieron MENOS → protocolo de faltante (sección 6.1)
+   ├─ Nacieron MÁS   → protocolo de excedente (sección 6.2)
+   └─ El `hatch_rate` alimenta el historial que ajusta
+      la sugerencia de sobreventa de las próximas camadas
    ▼
 READY (contado y encajonado, con los pollitos de yapa por mortandad)
    ▼
@@ -337,8 +343,81 @@ DELIVERED
 ```
 
 **El aviso proactivo de faltante es una decisión de negocio, no técnica.** Un
-productor al que le avisan con 5 días de anticipación reacomoda su plan. Uno que
-se entera el día del retiro pierde el ciclo y no vuelve a comprar.
+productor al que le avisan apenas se sabe reacomoda su plan. Uno que se entera el
+día del retiro pierde el ciclo y no vuelve a comprar.
+
+### 6.1 Protocolo de faltante ⚠
+
+Nacen menos de los vendidos. **No es la excepción: es una consecuencia esperada
+de vender con sobreventa**, y por eso tiene que ser un procedimiento, no una
+improvisación.
+
+```
+Se carga el nacimiento real → faltan N pollitos
+        ↓
+El sistema SIMULA el reparto según la política elegida
+y muestra el impacto pedido por pedido ANTES de aplicar
+        ↓
+JB revisa, ajusta a mano si quiere, y confirma
+        ↓
+Se generan batch_allocations + se notifica a los afectados
+```
+
+**Las cuatro políticas, y cuál conviene:**
+
+| Política | Cómo reparte | Cuándo usarla |
+|---|---|---|
+| **`PROTECT_SMALL`** ✅ recomendada | Los pedidos chicos se sirven completos; el faltante se prorratea entre los grandes | Por defecto. Ver el porqué abajo |
+| `FIFO` | El que reservó primero cobra completo; el faltante cae sobre los últimos | Premia reservar temprano, pero puede dejar a alguien en cero |
+| `PRORATE` | Todos reciben el mismo porcentaje menos | El más "justo" en apariencia, el peor en la práctica para los chicos |
+| `MANUAL` | JB decide pedido por pedido | Siempre disponible como anulación |
+
+**Por qué `PROTECT_SMALL` por defecto:** el impacto de un faltante no es
+proporcional al tamaño del pedido. A una granja que pidió 1.000 le entregás 960
+y pierde el 4% de una producción que igual va a hacer. A un productor de patio
+que pidió 50 le entregás 48 y no pasa nada, pero si el prorrateo lo deja en 0 —o
+si FIFO lo deja último— perdiste al cliente entero y probablemente para siempre.
+Servir completos a los chicos cuesta poco y evita el daño grande.
+
+**Regla de desempate dentro de los grandes: FIFO.** El que reservó con 21 días de
+anticipación queda mejor protegido que el que reservó dos días antes. Eso no es
+sólo justo: **empuja a los clientes a reservar temprano, que es exactamente lo
+que JB necesita para decidir cuántos huevos cargar.** El incentivo del sistema
+apunta hacia donde le conviene al negocio.
+
+**Opciones que se le ofrecen al cliente recortado:**
+1. Entrega parcial con reintegro proporcional
+2. Completar en la camada siguiente, con prioridad reservada
+3. Reintegro total
+
+Y queda marcado en la lista de espera como `TRIMMED_ORDER`, para ser el primero
+en recibir el excedente de la próxima.
+
+### 6.2 Protocolo de excedente ⚠
+
+Nacen más de los vendidos. Suena a buena noticia, pero **un pollito de un día que
+no sale hoy se convierte en pérdida en pocos días**: come, ocupa lugar y pierde
+valor comercial rápido. Colocarlo es urgente.
+
+```
+Se carga el nacimiento real → sobran N pollitos
+        ↓
+El sistema arma la lista de colocación, en este orden:
+  1. Clientes recortados en esta misma camada o en la anterior
+  2. Lista de espera de esa línea (hatch_waitlist)
+  3. Clientes recurrentes cuyo ciclo indica que están por reponer
+  4. Clientes de la zona de reparto propio (se coloca sin depender del transporte)
+        ↓
+[ Enviar oferta ] → WhatsApp + email en un clic, con cupo y vencimiento
+        ↓
+Lo que no se coloca en X horas → oferta pública de última hora en la web
+```
+
+**Esto hoy no existe como procedimiento y es plata que se pierde en silencio.**
+El excedente aparece el día del nacimiento, cuando nadie tiene tiempo de sentarse
+a llamar clientes uno por uno. Un botón que manda la oferta a la gente correcta,
+en orden de prioridad, convierte una pérdida en una venta — y le da al cliente
+recortado la reparación antes de que la pida.
 
 ---
 

@@ -102,7 +102,7 @@ del módulo (`modules/<x>/index.ts`).
 |---|---|---|
 | **catalog** | Productos, líneas genéticas (`chick_specs`), categorías, atributos, imágenes, búsqueda | Precios finales, disponibilidad |
 | **pricing** | Listas de precios, escalas por cantidad, grupos de cliente, promociones, cupones, IVA | Mostrar precios en pantalla |
-| **hatchery** ⚠ | **Camadas: fechas de nacimiento, cupo, reservas, cierre, nacimiento real, lista de espera** | Decidir si se puede vender (eso lo pregunta checkout) |
+| **hatchery** ⚠ | **Camadas: nacimientos por fecha, sobreventa controlada, reservas, nacimiento real, protocolos de faltante y excedente, historial de rendimiento** | Decidir si se puede vender (eso lo pregunta checkout) |
 | **inventory** | Stock de insumos por depósito, lotes, movimientos | Cupo de camadas (eso es `hatchery`) |
 | **advisor** ⚠ | Asesor de compra: traduce mercado objetivo → línea recomendada | Vender |
 | **cart** | Carrito persistente, ítems, recálculo, expiración de reservas | Cobrar |
@@ -137,14 +137,24 @@ batch.short_hatch  ⚠  → orders.aplicarProtocoloDeFaltante
                       → payments.reintegrarProporcional
                       → notifications.avisarFaltante
 
+batch.surplus_hatch ⚠ → hatchery.armarListaDeColocacion
+                      → notifications.ofrecerExcedente
+
+batch.closed          → hatchery.actualizarHistorialDeRendimiento
+
 dispatch.shipped      → notifications.enviarNumeroDeGuia
 
 customer.approved_wholesale → notifications.darBienvenidaMayorista
 ```
 
-`batch.short_hatch` (nacieron menos de los comprometidos) es el evento que más
-importa que esté bien resuelto: dispara el aviso proactivo al cliente antes de
-que se entere por su cuenta.
+`batch.short_hatch` (nacieron menos de los vendidos) es el evento que más importa
+que esté bien resuelto: dispara el aviso proactivo al cliente antes de que se
+entere por su cuenta. Su espejo, `batch.surplus_hatch`, dispara la colocación
+urgente del excedente — un pollito que no sale hoy se convierte en pérdida en
+pocos días.
+
+`batch.closed` alimenta el historial de rendimiento, que es lo que con el tiempo
+convierte la decisión de sobreventa de un tanteo en un número fundado.
 
 Implementación en Fase 1: un despachador de eventos en proceso, síncrono para lo
 crítico y encolado en **Upstash QStash** para lo que puede fallar sin romper la
@@ -203,7 +213,7 @@ por `event_id` y respuesta 200 inmediata.
 |---|---|
 | Manipulación de precios desde el cliente | El precio **jamás** viaja del navegador al servidor. Se recalcula íntegro en el servidor al confirmar el pedido |
 | Webhook de pago falsificado | Verificación de firma HMAC + consulta de confirmación a la API de MP antes de marcar pagado |
-| **Sobreventa de cupo de camada** | Reserva con bloqueo transaccional (`SELECT ... FOR UPDATE`) + TTL de 30 min. Es el riesgo operativo más grave: comprometer más pollitos de los que van a nacer deja a un productor sin producción |
+| **Sobreventa por encima de lo decidido** | Reserva con bloqueo transaccional (`SELECT ... FOR UPDATE`) + TTL de 30 min. JB **sobrevende a propósito** un margen configurado; el bloqueo garantiza que la sobreventa sea la elegida y no el resultado de dos reservas simultáneas pisándose |
 | Acceso al panel admin | Middleware por rol + segundo factor para roles con permisos financieros (Fase 2) |
 | Fuerza bruta en login | Rate limiting por IP y por email en Upstash |
 | Datos fiscales de clientes | Cifrado en reposo del proveedor + acceso restringido por rol + registro de auditoría |

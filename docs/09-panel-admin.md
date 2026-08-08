@@ -72,7 +72,9 @@ tiene que reflejar esa realidad.
 
 Dos bloques valen especialmente:
 
-- **"Camada al 92% de cupo"** avisa cuándo abrir otra o subir el precio.
+- **"Cargar huevos en 3 días"** es la alerta más importante del panel: es el
+  único momento en que todavía se puede cambiar cuánto se produce. Pasado eso, el
+  cupo es fijo hasta el nacimiento.
 - **"Búsquedas sin resultado"** es demanda real que JB hoy no captura. Si
   aparece "pato" catorce veces en un mes, es una decisión comercial fundada.
 
@@ -107,10 +109,12 @@ Dos bloques valen especialmente:
 │ Camada · Parrillero doble pechuga · 12/09/2026             │
 │ Estado: [ ABIERTA ▾ ]                                      │
 ├────────────────────────────────────────────────────────────┤
-│ Cupo total        1.000                                    │
-│ Reservado           660  ▓▓▓▓▓▓▒▒▒▒  66%                   │
-│ Disponible          340                                    │
-│ Cierre de reservas  05/09/2026                             │
+│ Huevos cargados     1.080   (31/08)                        │
+│ Esperado            1.000                                  │
+│ Sobreventa          +4%  →  vendible 1.040                 │
+│ Reservado             660  ▓▓▓▓▓▓▒▒▒▒  63%                 │
+│ Disponible            380                                  │
+│ Cierre de reservas  miércoles 11/09 18:00                  │
 │ Ventana de despacho 12 al 14/09                            │
 │ Nacidos reales      [_______]                              │
 │                                                            │
@@ -126,34 +130,129 @@ Dos bloques valen especialmente:
 └────────────────────────────────────────────────────────────┘
 ```
 
-### Registrar nacimiento — la acción crítica
+### Registrar nacimiento — la acción crítica ⚠
+
+Es la pantalla que se usa todos los jueves, y la que resuelve el problema real
+de JB: se vende de más a propósito, y el jueves hay que acomodar la realidad.
 
 ```
-┌──────────────────────────────────────────────┐
-│  Camada 12/09 · Parrillero                   │
-│  Comprometidos: 1.000                        │
-│                                              │
-│  ¿Cuántos nacieron?  [   960   ]             │
-│                                              │
-│  ⚠ FALTAN 40 POLLITOS                        │
-│                                              │
-│  ¿Cómo se resuelve?                          │
-│  ○ Prorratear entre todos los pedidos        │
-│  ● Completar desde otra camada               │
-│  ○ Afectar a los pedidos más nuevos          │
-│  ○ Resolver pedido por pedido                │
-│                                              │
-│  ☑ Avisar automáticamente a los afectados    │
-│                                              │
-│  [        Confirmar nacimiento        ]      │
-└──────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│  Camada 12/09 · Parrillero                             │
+│                                                        │
+│  Esperado      1.000                                   │
+│  Vendido       1.040   (sobreventa +4%)                │
+│                                                        │
+│  ¿Cuántos nacieron?  [    980    ]                     │
+│                                                        │
+│  ⚠ FALTAN 60 POLLITOS                                  │
+│  Rendimiento de esta camada: 0,98                      │
+│                                                        │
+│  ¿Cómo se reparte?                                     │
+│  ● Proteger pedidos chicos (recomendado)               │
+│  ○ Por orden de reserva (FIFO)                         │
+│  ○ Prorrateo entre todos                               │
+│  ○ Lo defino yo pedido por pedido                      │
+│                                                        │
+│  ┌────────────────────────────────────────────────┐    │
+│  │ SIMULACIÓN — así queda cada pedido             │    │
+│  │                                                │    │
+│  │ #00042 Miguel A.   500 → 460   −40  ⚠          │    │
+│  │        reservó hace 19 días                    │    │
+│  │ #00051 Granja Sur  400 → 380   −20  ⚠          │    │
+│  │        reservó hace 3 días                     │    │
+│  │ #00045 Carla P.    100 → 100    ok             │    │
+│  │ #00047 Ramón G.     50 →  50    ok             │    │
+│  │                                                │    │
+│  │ 2 clientes afectados · 60 pollitos             │    │
+│  └────────────────────────────────────────────────┘    │
+│                                                        │
+│  ☑ Avisar a los afectados con sus opciones             │
+│  ☑ Marcarlos como prioritarios para la próxima camada  │
+│                                                        │
+│  [ Ajustar a mano ]      [ Confirmar y avisar ]        │
+└────────────────────────────────────────────────────────┘
 ```
 
-> **Esta pantalla evita el peor momento operativo del negocio.** Si nacen menos
-> de los comprometidos, alguien se va a quedar corto. Que el sistema lo detecte
-> el día del nacimiento y avise automáticamente —en lugar de que el cliente se
-> entere cuando va a retirar— es la diferencia entre un problema gestionado y un
-> cliente perdido.
+**Lo que hace valiosa a esta pantalla es la simulación.** JB ve exactamente a
+quién le va a tocar el recorte y cuánto, **antes** de confirmar, y puede
+corregirlo a mano si sabe algo que el sistema no sabe (que Miguel viene recortado
+de la camada anterior, que Granja Sur no puede recibir menos de 400). El sistema
+propone; la decisión sigue siendo de JB.
+
+**Y el aviso sale solo.** Hoy eso son ocho llamados telefónicos incómodos un
+jueves a la mañana, que es justo cuando menos tiempo hay.
+
+### Si nacieron de más — colocar el excedente
+
+```
+┌────────────────────────────────────────────────────────┐
+│  ✅ SOBRAN 45 POLLITOS                                 │
+│  Rendimiento: 1,04                                     │
+│                                                        │
+│  A quién ofrecérselos, en orden:                       │
+│  ┌────────────────────────────────────────────────┐    │
+│  │ ☑ Recortados en camadas anteriores      2  (60)│    │
+│  │ ☑ Lista de espera de esta línea         5 (350)│    │
+│  │ ☑ Recurrentes que ya deberían reponer   8 (—)  │    │
+│  │ ☑ Clientes de la zona de reparto        4 (—)  │    │
+│  └────────────────────────────────────────────────┘    │
+│                                                        │
+│  Precio de la oferta  [ lista ▾ ] [ −10% ▾ ]           │
+│  Vence en             [ 6 horas ▾ ]                    │
+│                                                        │
+│  [ Enviar oferta por WhatsApp y email ]                │
+└────────────────────────────────────────────────────────┘
+```
+
+> **Este excedente hoy es plata que se pierde en silencio.** Aparece el jueves,
+> cuando nadie tiene tiempo de llamar clientes uno por uno, y un pollito que no
+> sale se convierte en pérdida en pocos días. Un botón que manda la oferta a la
+> gente correcta, en el orden correcto, convierte la pérdida en venta — y de paso
+> le repara el faltante al cliente que quedó corto antes de que lo reclame.
+
+### Planificar la camada — cuántos huevos cargar
+
+Pantalla que aparece cuando faltan ~21 días para un nacimiento y todavía no se
+cargaron los huevos.
+
+```
+┌────────────────────────────────────────────────────────┐
+│  Camada del 10/10 · Campero                            │
+│  Faltan 3 días para cargar huevos                      │
+│                                                        │
+│  Ya reservado           420 pollitos                   │
+│  Promedio de esta línea 680 (últimas 6 camadas)        │
+│  Se suele vender un 38% después de cargar              │
+│                                                        │
+│  Sugerencia: cargar para ~700 nacimientos              │
+│                                                        │
+│  Esperado    [   700   ]                               │
+│  Sobreventa  [   +4 %  ]  → vendible 728               │
+│                                                        │
+│  ┌────────────────────────────────────────────────┐    │
+│  │ 📊 HISTORIAL DE ESTA LÍNEA                     │    │
+│  │ Rendimiento promedio    0,97                   │    │
+│  │ Peor caso (10 camadas)  0,91                   │    │
+│  │ Mejor caso              1,05                   │    │
+│  │                                                │    │
+│  │ Sobreventa segura sugerida: −3%                │    │
+│  │ Estás usando +4%: en 1 de cada 10 camadas      │    │
+│  │ vas a quedar corto ~50 pollitos                │    │
+│  └────────────────────────────────────────────────┘    │
+│                                                        │
+│  [ Guardar ]                                           │
+└────────────────────────────────────────────────────────┘
+```
+
+> **Acá está el mayor aporte del sistema al negocio.** Hoy la sobreventa se
+> decide tanteando, y el tanteo depende de que esté la persona que sabe. Con 10 o
+> 15 camadas registradas, la decisión pasa a estar fundada en el rendimiento real
+> —y por línea, porque puede que el parrillero rinda parejo y el campero no—, es
+> transferible a otra persona, y el sistema te dice en criollo qué riesgo estás
+> tomando.
+>
+> **La sugerencia nunca se aplica sola.** JB decide y puede ignorarla. El sistema
+> informa; no manda.
 
 ---
 
@@ -345,7 +444,10 @@ desarrollador. Es lo que determina que la web siga viva a los seis meses.
 |---|---|
 | Ventas por período | Evolución y comparación |
 | Ventas por línea | Qué se vende y qué no |
-| **Ocupación de camadas** | % de cupo vendido por fecha → ajustar producción |
+| **Ocupación de camadas** | % vendido sobre lo esperado, por fecha |
+| **Rendimiento de nacimiento** ⚠ | `actual / esperado` por línea, con promedio, desvío y peor caso. **Es el reporte que reemplaza el tanteo** |
+| **Faltantes y excedentes** ⚠ | Cuántas camadas quedaron cortas, cuánto y a quién le tocó |
+| **Clientes recortados** ⚠ | Quién viene quedando corto seguido. Ese cliente se va a ir |
 | **Margen por producto** | Sólo `ADMIN`/`MANAGER` |
 | **Ventas por provincia** | Dónde crecer y qué transporte reforzar |
 | Clientes nuevos vs. recurrentes | Salud del negocio |
@@ -367,8 +469,8 @@ Todos exportables a CSV/Excel.
 ## 14. Configuración `/admin/configuracion`
 
 Datos de la empresa · CBU, alias y titular · WhatsApp y horarios · mínimos y
-múltiplos por defecto · **% de yapa por mortandad** · plazos de reserva y de
-pago · política de mortandad · textos legales · integraciones (Mercado Pago,
+múltiplos por defecto · **% de yapa por mortandad** · **sobreventa por defecto y
+política de faltante por defecto** · plazos de reserva y de pago · política de mortandad · textos legales · integraciones (Mercado Pago,
 email) · usuarios y roles · registro de auditoría.
 
 ---
@@ -378,7 +480,9 @@ email) · usuarios y roles · registro de auditoría.
 El panel completo es responsive, pero **tres pantallas se diseñan primero para
 mobile** porque se usan fuera del escritorio:
 
-1. **Despachos** — en la planta, el día del nacimiento, cargando guías.
+1. **Registrar nacimiento y despachos** — en la planta, el jueves, contando y
+   cargando guías. Son las dos pantallas que más se usan y ninguna se usa sentado
+   frente a una computadora.
 2. **Hoja de ruta** — en el reparto.
 3. **Validación de transferencias** — desde cualquier lado, es urgente.
 

@@ -250,34 +250,133 @@ Ficha técnica flexible sin migraciones: `id`, `product_id`, `key`, `value`,
 
 ## 3. Nacimientos (el corazón del catálogo)
 
+El pollito no es stock de depósito: **nace un jueves y sale ese jueves**. Y la
+cantidad que va a nacer **no se sabe con certeza hasta el día**, así que JB vende
+deliberadamente por encima de lo esperado y ajusta según cómo venga. El modelo
+tiene que reflejar eso, no pelearse con eso.
+
+### Las tres ventanas de una camada ⚠
+
+```
+   D-21                        D-1        D (jueves)
+    │                           │          │
+    ▼                           ▼          ▼
+  ┌──────────────┬───────────────────────┬───────────┐
+  │ PLANIFICACIÓN│        VENTA          │NACIMIENTO │
+  │              │                       │           │
+  │ La reserva   │ El cupo YA es fijo.   │ Se cuenta │
+  │ influye en   │ Se vende contra lo    │ lo real   │
+  │ cuántos      │ que se espera que     │ y se      │
+  │ huevos se    │ nazca, con sobreventa │ resuelve  │
+  │ cargan       │ controlada            │           │
+  └──────────────┴───────────────────────┴───────────┘
+   se cargan los            21 días de
+   huevos                   incubación
+```
+
+Esta distinción importa: **una reserva hecha con 21 días o más de anticipación
+todavía puede cambiar la producción; una hecha 2 días antes, no.** Por eso el
+riesgo de sobreventa se concentra en las reservas tardías, y por eso conviene
+premiar al que reserva temprano (ver política de faltante más abajo).
+
 ### `hatch_batches` ⚠
-El pollito no es stock de depósito: **nace un día y sale ese día**.
 
 | Campo | Tipo | Nota |
 |---|---|---|
 | id | String PK | |
 | product_id | String FK | la línea que nace |
-| **hatch_date** | Date | fecha de nacimiento |
-| **capacity** | Int | cupo total de la camada |
-| **reserved** | Int | ya vendido |
-| **available** | Int generado | `capacity - reserved` |
+| **hatch_date** | Date | fecha de nacimiento — jueves |
 | **status** | Enum | `PLANNED`, `OPEN`, `CLOSED`, `HATCHED`, `DISPATCHED`, `CANCELLED` |
-| **order_deadline** | DateTime | límite para reservar |
-| **dispatch_from / dispatch_to** | Date | ventana de despacho y retiro |
-| price_cents? | Int | precio propio de la camada |
-| **actual_hatched** | Int? | cuántos nacieron realmente |
-| notes | Text? | |
+| `eggs_set` | Int? | huevos incubados |
+| `eggs_set_at` | Date? | cuándo se cargaron (≈ D-21) |
+| **`expected_hatch`** ⚠ | Int | **cuántos se espera que nazcan. Es la base de la venta, no un tope** |
+| **`oversell_pct`** ⚠ | Decimal | cuánto se permite vender por encima de lo esperado |
+| **`sellable`** | Int generado | `floor(expected_hatch × (1 + oversell_pct/100))` |
+| **`reserved`** | Int | ya vendido |
+| **`available`** | Int generado | `sellable - reserved` |
+| **`actual_hatched`** ⚠ | Int? | cuántos nacieron realmente |
+| **`hatch_rate`** | Decimal generado | `actual_hatched / expected_hatch` — **el dato que aprende el sistema** |
+| **`shortage_policy`** ⚠ | Enum | `PROTECT_SMALL`, `FIFO`, `PRORATE`, `MANUAL` |
+| `planning_deadline` | DateTime | ≈ D-21. Hasta acá la reserva influye en la producción |
+| `order_deadline` | DateTime | límite de reserva. Por defecto **D-1**, no una semana antes |
+| `dispatch_from / dispatch_to` | Date | ventana de despacho y retiro |
+| `price_cents?` | Int | precio propio de la camada |
+| `notes` | Text? | |
 
-**Regla dura:** `reserved` sólo se modifica dentro de una transacción con
-`SELECT ... FOR UPDATE`. Comprometer más pollitos que los que van a nacer es el
-peor error posible del sistema: no se resuelve con una disculpa, deja a un
-productor sin producción.
+> **Corrección importante respecto de la versión anterior de este documento.**
+> Ahí figuraba como regla dura *"nunca comprometer más pollitos de los que van a
+> nacer"*. Es incorrecto para este negocio: JB vende de más a propósito porque el
+> nacimiento real es incierto. La regla correcta es otra:
+>
+> **`reserved` nunca supera `sellable`, y `sellable` lo define JB con un margen
+> de sobreventa que el propio sistema calcula a partir del historial.**
+>
+> La protección real no es impedir la sobreventa: es tener un protocolo de
+> faltante ordenado y avisar temprano.
+
+**Regla técnica que sí se mantiene:** `reserved` sólo se modifica dentro de una
+transacción con `SELECT ... FOR UPDATE`. El límite es `sellable`, pero es un
+límite y hay que respetarlo: sin bloqueo, dos reservas simultáneas lo pasan de
+largo y la sobreventa deja de estar controlada.
+
+### `hatch_performance` — el historial que reemplaza el tanteo ⚠
+
+Vista materializada por producto, recalculada al cerrar cada camada:
+
+| Campo | Qué es |
+|---|---|
+| product_id | |
+| `batches_count` | camadas registradas |
+| `avg_hatch_rate` | rendimiento promedio (ej. 0,94) |
+| `stddev_hatch_rate` | qué tan estable es |
+| `min_hatch_rate` / `max_hatch_rate` | peor y mejor caso histórico |
+| `p10_hatch_rate` | el percentil 10: el escenario malo realista |
+| `suggested_oversell_pct` | **sugerencia de sobreventa segura** |
+
+La sugerencia sale de una regla simple y conservadora:
+
+```
+suggested_oversell_pct = (p10_hatch_rate − 1) × 100
+```
+
+Es decir: se permite vender hasta el nivel que se cumplió el 90% de las veces.
+Si históricamente el peor 10% de las camadas rindió 0,97 sobre lo esperado, se
+sugiere **−3%** (vender por debajo, no por encima). Si el peor caso rindió 1,04,
+se sugiere **+4%**.
+
+> **Este es el valor concreto que el sistema le agrega a JB desde el mes tres.**
+> Hoy la sobreventa se decide "tanteando", y el tanteo funciona mientras la
+> persona que sabe esté disponible. Con 10 o 15 camadas cargadas, la decisión
+> pasa a estar fundada en el historial real, es transferible a otra persona, y se
+> puede afinar por línea genética: puede que el parrillero rinda parejo y el
+> campero no.
+>
+> **La sugerencia nunca se aplica sola.** Se muestra al lado del campo y JB
+> decide. El sistema informa; no manda.
+
+### `batch_allocations` ⚠ — cómo se resolvió el faltante o el excedente
+
+Deja registro de qué recibió efectivamente cada pedido cuando el nacimiento no
+coincidió con lo vendido:
+
+`id`, `hatch_batch_id`, `order_id`, `qty_ordered`, `qty_allocated`,
+`qty_short` (generado), `reason` (`SHORTAGE`, `SURPLUS_OFFER`), `policy_applied`,
+`resolution` (`PARTIAL_DELIVERY`, `NEXT_BATCH`, `REFUND`, `CUSTOMER_CHOICE`),
+`customer_notified_at`, `user_id`, `created_at`.
+
+Sirve para dos cosas: reconstruir qué se decidió y por qué, y —más importante—
+**detectar al cliente que viene siendo recortado seguido**. Ese cliente se va a
+ir, y conviene saberlo antes de que se vaya.
 
 ### `hatch_waitlist`
-Para camadas agotadas o todavía no publicadas: `id`, `product_id`,
-`hatch_date?`, `customer_id?`, `email`, `phone`, `quantity`, `notified_at?`.
+Para camadas agotadas, todavía no publicadas, o para colocar excedentes:
+`id`, `product_id`, `hatch_date?`, `customer_id?`, `email`, `phone`, `quantity`,
+`source` (`SOLD_OUT`, `NOT_PUBLISHED`, `TRIMMED_ORDER`), `notified_at?`.
 
-Es un activo comercial: demanda concreta con nombre y cantidad.
+`TRIMMED_ORDER` marca a quien quedó corto en una camada: **es el primero al que
+hay que ofrecerle el excedente de la siguiente.**
+
+Es un activo comercial: demanda concreta, con nombre y cantidad.
 
 ---
 

@@ -17,28 +17,65 @@ planificado sobre el supuesto de que JB vendía pollo faenado. No es así: JB ve
 | A1d | Líneas que se venden | Doble pechuga, ponedor, campero / de chacra, ecológico. **Precios distintos** | 4 categorías + tabla `chick_specs` |
 | A3 | Envíos | **Todo el país.** Recorridos propios sólo por Córdoba; el resto por **comisionistas y transportes** | Se reemplazó el módulo de envíos por uno de despacho con transportes, agencias, días de salida y flete a cargo del destinatario |
 | A3b | Cadena de frío | **No aplica.** Es un pollito vivo, no carne | Se eliminó. En su lugar aparece la restricción inversa: el pollito necesita **calor** y no puede esperar días a que salga el transporte |
+| B1 | Nacimientos | **Jueves.** Reservas desde 21 días antes hasta 2 días antes. **Se vende de más a propósito porque a veces nacen menos** | Módulo de camadas con sobreventa controlada, historial de rendimiento, y protocolos de faltante y excedente |
 
 ---
 
 ## B · Lo que quedó abierto
 
-### B1 · Los nacimientos ⚠ la pregunta principal
+### ~~B1 · Los nacimientos~~ — RESPONDIDA ✅
 
-Te cortaste justo cuando ibas a contestar esto. Es lo que define si el catálogo
-muestra un **calendario** o simplemente **stock**, y hoy está diseñado como
-calendario porque es lo que corresponde a un pollito de un día.
+| Pregunta | Respuesta | Impacto |
+|---|---|---|
+| ¿Qué día nacen? | **Jueves** | Calendario semanal fijo. El público entiende "nacemos todos los jueves" |
+| ¿Con cuánta anticipación reservan? | **Depende: hay clientes de 21 días y clientes de 2 días** | Las reservas quedan **abiertas hasta el día anterior**. Cerrar antes eliminaría toda la venta de último momento |
+| ¿Nacen de menos? | **Sí, y por eso JB vende de más a propósito, "tanteando"** | **Cambia el núcleo del módulo.** Ver abajo |
 
-- ¿JB **incuba** o compra el pollito a una incubadora y lo revende?
-- ¿Los nacimientos son en **días fijos**? (típicamente un día fijo por semana)
-- ¿Cada cuánto hay nacimientos de cada línea? ¿Todas las semanas? ¿Alternadas?
-- ¿Con cuánta anticipación te reserva un cliente? ¿Días, semanas?
-- ¿Se puede vender "para la semana que viene" o hay que reservar con más tiempo?
-- ¿Cuántos pollitos salen por camada, aproximadamente?
-- ¿Alguna vez nacen menos de los comprometidos? ¿Cómo lo resolvés hoy?
+#### Lo que esto corrigió
 
-**Si la respuesta es "tengo pollitos casi siempre disponibles"**, el módulo de
-camadas se simplifica mucho y el catálogo pasa a mostrar stock común. Es menos
-trabajo, así que conviene saberlo antes de empezar.
+La versión anterior de esta planificación decía, como regla innegociable:
+*"nunca comprometer más pollitos de los que van a nacer"*. **Era incorrecta.** JB
+sobrevende deliberadamente porque el nacimiento real es incierto, y ajusta según
+cómo venga. Eso no es un error a prevenir: es cómo funciona el negocio.
+
+El modelo pasó a ser de **sobreventa controlada**, como el de una aerolínea:
+
+- `expected_hatch` — lo que se espera que nazca (base de venta, **no un tope**)
+- `oversell_pct` — cuánto se permite vender por encima
+- `sellable` — el límite real del sistema
+- `actual_hatched` → `hatch_rate` — lo que efectivamente pasó
+
+Y trajo tres cosas que antes no estaban:
+
+1. **Historial de rendimiento.** Cada camada guarda su `hatch_rate`. Con 10 o 15
+   camadas, el sistema calcula promedio, desvío y peor caso **por línea**, y
+   sugiere cuánto se puede sobrevender con seguridad. *"Ir tanteando" son datos
+   que ya existen y hoy se tiran.* La sugerencia nunca se aplica sola: JB decide.
+2. **Protocolo de faltante con simulación.** Antes de confirmar, JB ve
+   exactamente a quién le toca el recorte y cuánto, y puede corregirlo a mano.
+   El aviso a los afectados sale automático.
+3. **Protocolo de excedente.** Si nacen de más, el sistema arma la lista de a
+   quién ofrecérselos, en orden, y manda la oferta en un clic.
+
+#### Lo único que falta definir de esto
+
+**¿Quién se queda corto cuando faltan?** Mi recomendación es
+**proteger a los pedidos chicos**: a una granja que pidió 1.000 le entregás 960 y
+pierde el 4% de una producción que igual va a hacer; a un productor de patio que
+pidió 50 y recibe 0, lo perdiste como cliente para siempre. Servir completos a los
+chicos cuesta poco y evita el daño grande.
+
+Como desempate entre los grandes, **el que reservó primero**. Eso además empuja a
+los clientes a reservar temprano, que es justo lo que te sirve para decidir
+cuántos huevos cargar.
+
+- ¿Te cierra ese criterio, o vos hoy priorizás distinto?
+- ¿Hay clientes que sí o sí no pueden quedar cortos?
+
+Otras dos, menores:
+- ¿Nacen **todos** los jueves, o algunos jueves según la línea?
+- ¿Cuánto solés sobrevender hoy, más o menos? (para arrancar con un número
+  razonable hasta que el historial tenga datos propios)
 
 ### B2 · Sexado
 
@@ -123,40 +160,37 @@ Si no hay respuesta, se avanza con esto y se ajusta después.
 
 ---
 
-## D · El stack, revisado con honestidad
+## D · El stack — la duda quedó cerrada
 
-En la primera ronda dije que si el pollo se vendía a precio cerrado por unidad y
-no había camadas, **Tiendanube pasaba a ser una alternativa seriamente
-considerable y más barata**. Ahora se cumple la primera condición: el precio es
-cerrado por unidad. Corresponde revisarlo.
+En las rondas anteriores dejé abierta la posibilidad de que **Tiendanube fuera la
+opción recomendada**: si el precio era cerrado por unidad y no había reserva por
+fecha, una tienda enlatada era más barata y más rápida, y correspondía decirlo.
 
-**Qué se puede hacer razonablemente bien en Tiendanube o Shopify:** catálogo,
-carrito, Mercado Pago, mínimos de compra, precios mayoristas (con app), y
-despacho a coordinar.
+**La respuesta a B1 cierra esa duda, y no a favor de Tiendanube.** Lo que
+describiste no es un catálogo con stock: es un sistema de producción con
+sobreventa controlada.
 
-**Qué no, y es donde se juega el proyecto:**
-
-| Necesidad | Por qué no encaja en una tienda enlatada |
+| Lo que necesitás | Tiendanube / Shopify |
 |---|---|
-| **Reserva contra fecha de nacimiento con cupo** | No existe el concepto. Se simula con "productos" por fecha, y se rompe al gestionar cupo, cierre y faltantes |
-| **Cruce fecha de nacimiento × día de salida del transporte** | Imposible sin desarrollo propio. Es lo que evita despachar animales que se mueren en el camino |
-| **Mapa de transportes con agencias y días** | No hay nada parecido. Es tu diferencial logístico |
-| **Flete a cargo del destinatario** | Choca con el modelo de checkout de cualquier plataforma |
-| **Asesor de compra por mercado objetivo** | Se puede hacer con una app externa, pobre y desconectada del catálogo |
-| **Panel por camada, no por pedido** | Es tu operación real y no se puede reproducir |
-| **Recompra por ciclo productivo** | Requiere `grow_out_days` por línea |
+| Vender contra una fecha de nacimiento con cupo | Se simula con "productos por fecha" y se rompe al gestionar el cupo |
+| **Vender de más a propósito, con un margen configurable** | No existe. El stock es un tope duro |
+| **Repartir el faltante entre pedidos, con simulación previa** | No existe, en ninguna forma |
+| **Aprender el rendimiento histórico y sugerir cuánto sobrevender** | No existe |
+| Colocar un excedente urgente por orden de prioridad | No existe |
+| Cruzar fecha de nacimiento con días de salida del transporte | No existe |
+| Flete a cargo del destinatario | Choca con el modelo de checkout |
 
-**Mi recomendación, sin adornos:** si la respuesta a **B1** es *"tengo pollitos
-casi siempre disponibles, sin fechas"*, entonces Tiendanube es una opción
-legítima para empezar, más barata y más rápida, y te conviene evaluarla en serio
-antes de invertir en desarrollo. Si la respuesta es *"se vende por fecha de
-nacimiento y hay que reservar"*, entonces la plataforma propia se justifica
-sola: el calendario de camadas y el cruce con los transportes **son el producto**,
-no un adorno.
+Las tres del medio son el corazón de tu operación de los jueves, y ninguna
+plataforma enlatada las tiene ni las va a tener: son específicas de vender
+animales vivos que nacen en cantidad incierta.
 
-Por eso B1 es la pregunta principal.
+**Conclusión: la plataforma propia se justifica.** No porque sea más linda, sino
+porque el jueves a la mañana, cuando faltan 60 pollitos y hay 14 pedidos, ninguna
+otra herramienta te va a decir a quién recortar ni avisarle sola.
 
----
+Dicho eso, sigue valiendo la advertencia general: si en algún momento el
+presupuesto no da para desarrollo propio, es mejor una tienda enlatada funcionando
+que un proyecto a medida a medio hacer.
 
 ## E · Información que necesito para arrancar
 
@@ -166,6 +200,7 @@ Por eso B1 es la pregunta principal.
 | E2 | **Fotos reales** de pollitos, planta y encajonado | Sprint 2 |
 | E3 | Logo en vectorial y colores | Sprint 1 |
 | E4 | Calendario de nacimientos de los próximos 3 meses | Sprint 3 |
+| E4b | **Historial de las últimas camadas: esperado vs. nacido real.** Aunque sea anotado a mano o de memoria — con 6 u 8 datos el sistema ya sugiere algo útil desde el día uno en vez de esperar 4 meses | Sprint 5 |
 | E5 | Lista de transportes y comisionistas con los que trabajás, con ciudades y días | Sprint 4 |
 | E6 | Zonas y días de reparto propio en Córdoba | Sprint 4 |
 | E7 | Razón social, CUIT, domicilio fiscal, condición IVA | Sprint 6 |
@@ -207,6 +242,14 @@ No bloquean, pero cambian dónde se pone el esfuerzo:
 
 Como venías: contestando de corrido, sin formato. Alcanza con eso.
 
-**La prioritaria es B1 (los nacimientos).** De esa respuesta depende si seguimos
-con plataforma propia o si te conviene evaluar algo más simple y barato — y eso
-es mejor saberlo ahora que dentro de tres meses.
+**B1 ya está respondida y con eso se cerró la decisión de fondo: va plataforma
+propia.**
+
+Lo que queda es menos crítico y no bloquea el arranque. Si tuviera que elegir
+tres para que contestes ahora:
+
+1. **Quién se queda corto cuando faltan pollitos** (final de la sección B1)
+2. **Los insumos** (B4): si van o no en la Fase 1
+3. **Mercado Pago** (B6): si ya tenés cuenta a nombre de la empresa
+
+Con eso alcanza para cerrar el alcance y empezar el diseño.

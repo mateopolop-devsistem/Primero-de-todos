@@ -34,12 +34,12 @@ con fecha, y que llegue al catálogo o al asesor en un clic.
 │  SEÑALES DE CONFIANZA                                      │
 │  🐣 Vacunados  📅 Fecha asegurada  🚚 Todo el país  💬 WSP  │
 │                                                            │
-│  📅 PRÓXIMOS NACIMIENTOS   ★ sección estrella              │
+│  📅 PRÓXIMOS NACIMIENTOS · todos los jueves  ★ estrella    │
 │  ┌────────────┬────────────┬────────────┬────────────┐     │
-│  │ 12/09      │ 12/09      │ 26/09      │ 10/10      │     │
+│  │ jue 12/09  │ jue 12/09  │ jue 26/09  │ jue 10/10  │     │
 │  │ Parrillero │ Ponedora   │ Parrillero │ Campero    │     │
 │  │ 340 disp.  │ 800 disp.  │ 1.000 disp.│ Próxim.    │     │
-│  │ cierra 05/09│ cierra 05/09│           │            │     │
+│  │ cierra mié │ cierra mié │            │            │     │
 │  │ [Reservar] │ [Reservar] │ [Reservar] │ [Avisarme] │     │
 │  └────────────┴────────────┴────────────┴────────────┘     │
 │                        [ Ver calendario completo → ]       │
@@ -143,16 +143,20 @@ disponibles, kit sugerido si es primerizo, y acceso directo a reservar.
 │                                                            │
 │ Filtros: [Todas las líneas ▾] [Todos los meses ▾]          │
 │                                                            │
+│  Nacemos todos los jueves.                                 │
+│                                                            │
 │  SEPTIEMBRE 2026                                           │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │ jue 12/09   Parrillero doble pechuga                 │  │
-│  │             340 de 1.000 disponibles  ▓▓▓▓▓▓▒▒▒▒     │  │
-│  │             Reservás hasta el 05/09                  │  │
+│  │             340 disponibles           ▓▓▓▓▓▓▒▒▒▒     │  │
+│  │             ⏰ Reservás hasta el miércoles 18:00      │  │
 │  │             Despacho: 12 al 14/09      [ Reservar ]  │  │
 │  ├──────────────────────────────────────────────────────┤  │
 │  │ jue 12/09   Ponedora (hembra)                        │  │
 │  │             800 disponibles           ▓▓▒▒▒▒▒▒▒▒     │  │
-│  │             Reservás hasta el 05/09    [ Reservar ]  │  │
+│  │             ⏰ Reservás hasta el miércoles 18:00      │  │
+│  ├──────────────────────────────────────────────────────┤  │
+│  │ jue 19/09   Parrillero doble pechuga    [ Reservar ] │  │
 │  ├──────────────────────────────────────────────────────┤  │
 │  │ jue 26/09   Parrillero doble pechuga                 │  │
 │  │             1.000 disponibles          [ Reservar ]  │  │
@@ -166,7 +170,27 @@ disponibles, kit sugerido si es primerizo, y acceso directo a reservar.
 La barra de cupo con color (verde → amarillo → rojo) genera urgencia real, no
 inventada: el cupo es efectivamente finito.
 
-**"Avisarme"** alimenta `hatch_waitlist`: demanda concreta con nombre y cantidad.
+**El cierre es el día anterior, no una semana antes.** Hay clientes que reservan
+con 21 días de anticipación y otros que reservan dos días antes: la web tiene que
+servir a los dos. Cerrar temprano perdería toda la venta de último momento, que
+es una parte real del negocio.
+
+**Sí se distingue, en cambio, la reserva temprana como algo mejor**, porque le
+sirve a JB para decidir cuánto producir:
+
+```
+┌──────────────────────────────────────────────────┐
+│ 🗓  Reservá con anticipación                     │
+│    Si reservás antes del 19/09, tu pedido queda  │
+│    priorizado. Producimos según lo reservado.    │
+└──────────────────────────────────────────────────┘
+```
+
+Eso no es una promesa de marketing: se cumple en la política de faltante, donde
+la fecha de reserva es el criterio de desempate.
+
+**"Avisarme"** alimenta `hatch_waitlist`: demanda concreta con nombre y cantidad,
+y es la primera lista a la que se le ofrece un excedente.
 
 ---
 
@@ -226,10 +250,12 @@ contador de filtros y botón fijo `[ Ver 12 resultados ]`.
 │                           │  1000+ .......... $XXX  −20%   │
 │                           │                                │
 │                           │  📅 ELEGÍ LA FECHA             │
-│                           │  ● 12/09 · 340 disponibles     │
-│                           │    reservás hasta el 05/09     │
-│                           │  ○ 26/09 · 1.000 disponibles   │
-│                           │  ○ 10/10 · próximamente        │
+│                           │  Nacemos todos los jueves      │
+│                           │  ● jue 12/09 · 340 disponibles │
+│                           │    ⏰ reservás hasta el mié 18h │
+│                           │  ○ jue 19/09 · disponible      │
+│                           │  ○ jue 26/09 · 1.000 disponib. │
+│                           │  ○ jue 10/10 · próximamente    │
 │                           │                                │
 │                           │  Cantidad                      │
 │                           │  [ − ]  500  [ + ]             │
@@ -529,7 +555,8 @@ estimado), *"te respondemos en menos de 24 h hábiles"*, y testimonios.
 | **Preparate** | 7 días antes | Criadora, temperatura, comederos, viruta |
 | **Recordatorio de despacho** | 48 h antes | Transporte, agencia, horario |
 | **Despachado** | Carga de la guía | N° de guía, agencia, llegada estimada |
-| **Faltante de camada** | Nacimiento incompleto | Aviso proactivo + opciones |
+| **Faltante de camada** | Nacimiento incompleto | Aviso proactivo, cuánto se pudo cubrir y las 3 opciones |
+| **Oferta de excedente** | Nacimiento por encima de lo vendido | Cantidad, precio y hasta cuándo. Primero a los recortados |
 | Retirado / entregado | Entrega | Agradecimiento + guía de primera semana |
 | Seguimiento de crianza | Días 3, 10, 30 | Consejos + insumos de la etapa |
 | **Recompra sugerida** | Según `grow_out_days` | "Ya estás faenando: ¿reponés?" |

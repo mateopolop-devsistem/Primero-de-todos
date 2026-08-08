@@ -78,7 +78,7 @@ de despacho con su número de guía, sin que nadie de JB intervenga manualmente.
 
 ### Sprint 2 — Catálogo y camadas (sem. 3–4) ★
 - Módulo `catalog`: productos, `chick_specs`, categorías, atributos, imágenes
-- **Módulo `hatchery`: camadas, cupo, cierre, reservas transaccionales**
+- **Módulo `hatchery`: camadas, sobreventa controlada, reservas transaccionales**
 - **Calendario de nacimientos** (público) + selector de camada en la ficha
 - Listado con filtros (incluido filtro por fecha) y búsqueda full-text
 - Admin: alta de productos y **alta de camadas**
@@ -106,7 +106,9 @@ de despacho con su número de guía, sin que nadie de JB intervenga manualmente.
 
 ### Sprint 5 — Panel operativo (sem. 9–10) ★
 - Dashboard con las colas de atención
-- **Camadas: detalle, cierre, registrar nacimiento, protocolo de faltante**
+- **Camadas: detalle, planificación (cuántos huevos cargar), registrar nacimiento**
+- **Protocolo de faltante con simulación + protocolo de excedente**
+- **Historial de rendimiento por línea y sugerencia de sobreventa**
 - **Despachos agrupados por transporte + carga de número de guía**
 - Hoja de ruta para el reparto propio de Córdoba
 - Pedidos: tablero, tabla, detalle, carga manual
@@ -129,12 +131,14 @@ de despacho con su número de guía, sin que nadie de JB intervenga manualmente.
 
 - [ ] Un productor reserva una camada con Mercado Pago sin intervención humana
 - [ ] Un cliente compra por transferencia y JB la valida en el panel
-- [ ] **El cupo de una camada nunca se sobrevende** (probado con reservas
-      concurrentes). Criterio innegociable
+- [ ] **La sobreventa nunca supera el margen que JB configuró** (probado con
+      reservas concurrentes). Criterio innegociable
+- [ ] JB carga un nacimiento corto, **ve la simulación del reparto antes de
+      confirmar**, la ajusta a mano, y los afectados reciben el aviso solos
+- [ ] JB carga un nacimiento con excedente y manda la oferta en un clic
+- [ ] Con 10 camadas cargadas, el sistema sugiere un % de sobreventa por línea
 - [ ] **El sistema bloquea un transporte que sale días después del nacimiento**,
       con la explicación a la vista
-- [ ] JB registra un nacimiento incompleto y los clientes afectados reciben el
-      aviso automáticamente
 - [ ] Al cargar un número de guía, el cliente lo recibe por email
 - [ ] Un cliente del interior consulta su ciudad y obtiene transporte, agencia y
       días de salida
@@ -194,7 +198,8 @@ de despacho con su número de guía, sin que nadie de JB intervenga manualmente.
 | **Contenido de JB que no llega a tiempo** | Alta | Alto | Fase 0 con entregables y fechas firmadas. Sesión de fotos agendada antes del sprint 2 |
 | **Cambios de alcance a mitad de camino** | Alta | Alto | Alcance de Fase 1 congelado por escrito. Todo lo nuevo va a Fase 2 |
 | **Integración con Mercado Pago más compleja de lo previsto** | Media | Alto | Prueba de concepto en el sprint 1, no en el 4. Es el riesgo técnico principal |
-| **Los nacimientos no funcionan como se asumió** | Media | Alto | Es la pregunta B1 del documento 11. Bloquea el sprint 2 y hay que cerrarla en Fase 0 |
+| **La política de reparto de faltantes molesta a un cliente grande** | Media | Medio | La decisión final siempre es manual: el sistema simula y propone, JB confirma. Nunca reparte solo |
+| **El historial tarda en tener datos** | Alta | Bajo | Se cargan a mano las últimas camadas conocidas (entregable E4b) para que sugiera algo útil desde el mes uno |
 | **El mapa de transportes no se puede armar a tiempo** | Media | Alto | No hace falta que esté completo: se arranca con los 10 destinos más frecuentes y la opción "no está mi ciudad", y se completa con el uso |
 | **Los clientes del interior no confían en pagar por adelantado** | Media | Alto | Política de mortandad visible, fotos reales, testimonios de productores de otras provincias, y transferencia como alternativa a la tarjeta |
 | **Baja adopción: los clientes siguen usando WhatsApp** | Media | Alto | Plan de lanzamiento: descuento exclusivo web, respuesta de WhatsApp con link a la web, capacitación a clientes clave |
@@ -221,7 +226,8 @@ informe de métricas, backlog de mejoras priorizado con JB.
 | Métrica | Herramienta | Objetivo mes 6 |
 |---|---|---|
 | Pedidos web / pedidos totales | Panel | ≥ 40% |
-| **Ocupación de camadas** | Panel | ≥ 85% del cupo vendido |
+| **Ocupación de camadas** | Panel | ≥ 85% de lo esperado, vendido |
+| **Camadas con faltante** | Panel | Tendencia a la baja al afinar la sobreventa |
 | **Ventas fuera de Córdoba** | Panel | ≥ 35% |
 | Tasa de conversión | PostHog | 1,5–2,5% |
 | Ticket promedio | Panel | ≥ ticket de WhatsApp |
