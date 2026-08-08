@@ -1,8 +1,12 @@
 # 11 — Decisiones a validar
 
-**Estado: segunda ronda.** La primera ronda corrigió un error de base — se había
-planificado sobre el supuesto de que JB vendía pollo faenado. No es así: JB vende
-**pollito bebé**, la materia prima. Toda la documentación fue reescrita.
+**Estado: tercera ronda.** La primera corrigió un error de base (se planificaba
+sobre el supuesto de que JB vendía pollo faenado; vende **pollito bebé**). La
+segunda incorporó los nacimientos de los jueves y la **sobreventa deliberada**.
+En esta tercera queda cerrado el criterio de reparto ante faltantes.
+
+**No hay decisiones bloqueantes pendientes.** Lo que queda son datos para cargar
+y definiciones que se ajustan sobre la marcha.
 
 ---
 
@@ -18,6 +22,7 @@ planificado sobre el supuesto de que JB vendía pollo faenado. No es así: JB ve
 | A3 | Envíos | **Todo el país.** Recorridos propios sólo por Córdoba; el resto por **comisionistas y transportes** | Se reemplazó el módulo de envíos por uno de despacho con transportes, agencias, días de salida y flete a cargo del destinatario |
 | A3b | Cadena de frío | **No aplica.** Es un pollito vivo, no carne | Se eliminó. En su lugar aparece la restricción inversa: el pollito necesita **calor** y no puede esperar días a que salga el transporte |
 | B1 | Nacimientos | **Jueves.** Reservas desde 21 días antes hasta 2 días antes. **Se vende de más a propósito porque a veces nacen menos** | Módulo de camadas con sobreventa controlada, historial de rendimiento, y protocolos de faltante y excedente |
+| B1b | ¿Quién se queda corto ante un faltante? | **Proteger a los pedidos chicos**, con la fecha de reserva como desempate entre los grandes | `shortage_policy = PROTECT_SMALL` por defecto. **Es una opción del panel, no código**: cambiarla después es elegir otra en un desplegable |
 
 ---
 
@@ -57,25 +62,38 @@ Y trajo tres cosas que antes no estaban:
 3. **Protocolo de excedente.** Si nacen de más, el sistema arma la lista de a
    quién ofrecérselos, en orden, y manda la oferta en un clic.
 
-#### Lo único que falta definir de esto
+#### El criterio de reparto — DECIDIDO ✅
 
-**¿Quién se queda corto cuando faltan?** Mi recomendación es
-**proteger a los pedidos chicos**: a una granja que pidió 1.000 le entregás 960 y
-pierde el 4% de una producción que igual va a hacer; a un productor de patio que
-pidió 50 y recibe 0, lo perdiste como cliente para siempre. Servir completos a los
-chicos cuesta poco y evita el daño grande.
+**Política por defecto: proteger a los pedidos chicos**, con la fecha de reserva
+como desempate entre los grandes.
 
-Como desempate entre los grandes, **el que reservó primero**. Eso además empuja a
-los clientes a reservar temprano, que es justo lo que te sirve para decidir
-cuántos huevos cargar.
+El razonamiento: a una granja que pidió 1.000 le entregás 960 y pierde el 4% de
+una producción que igual va a hacer. A un productor de patio que pidió 50 y
+recibe 0, lo perdés como cliente para siempre. Servir completos a los chicos
+cuesta poco y evita el daño grande. Y el desempate por fecha de reserva empuja a
+reservar temprano, que es justo lo que le sirve a JB para decidir cuántos huevos
+cargar.
 
-- ¿Te cierra ese criterio, o vos hoy priorizás distinto?
-- ¿Hay clientes que sí o sí no pueden quedar cortos?
+**Tres cosas que hacen esta decisión barata de revertir:**
 
-Otras dos, menores:
+1. **Es un campo, no código.** `shortage_policy` se elige desde el panel, camada
+   por camada, entre cuatro opciones ya construidas: proteger chicos, orden de
+   reserva, prorrateo, o manual. Cambiar el criterio general es cambiar el valor
+   por defecto en Configuración.
+2. **Nunca reparte sola.** El sistema simula, muestra a quién le toca cuánto, y
+   recién ahí JB confirma. Se puede corregir a mano en cualquier momento.
+3. **Queda registrado.** `batch_allocations` guarda qué política se aplicó y qué
+   recibió cada pedido, así que a los 6 meses se puede ver si el criterio funcionó
+   o si conviene otro — con datos, no con impresiones.
+
+Dicho de otro modo: no hace falta acertar hoy. Hace falta que sea fácil corregir,
+y lo es.
+
+#### Lo que todavía queda de B1 (menor, no bloquea)
+
 - ¿Nacen **todos** los jueves, o algunos jueves según la línea?
-- ¿Cuánto solés sobrevender hoy, más o menos? (para arrancar con un número
-  razonable hasta que el historial tenga datos propios)
+- ¿Cuánto solés sobrevender hoy, más o menos? Sirve para arrancar con un número
+  razonable hasta que el historial tenga datos propios.
 
 ### B2 · Sexado
 
@@ -147,6 +165,7 @@ Si no hay respuesta, se avanza con esto y se ajusta después.
 
 | # | Decisión | Por defecto |
 |---|---|---|
+| C0 | **Política de faltante** | **Proteger pedidos chicos** (decidido, editable en el panel) |
 | C1 | Tiempo de reserva de cupo en el carrito | 30 minutos |
 | C2 | Plazo para pagar por transferencia | 48 h (se acorta si la camada cierra antes) |
 | C3 | Compra sin registro | Sí, habilitada |
@@ -242,14 +261,13 @@ No bloquean, pero cambian dónde se pone el esfuerzo:
 
 Como venías: contestando de corrido, sin formato. Alcanza con eso.
 
-**B1 ya está respondida y con eso se cerró la decisión de fondo: va plataforma
-propia.**
+**Ya no hay decisiones bloqueantes.** La de fondo quedó cerrada —va plataforma
+propia— y el criterio de reparto está definido y es editable.
 
-Lo que queda es menos crítico y no bloquea el arranque. Si tuviera que elegir
-tres para que contestes ahora:
+Lo que queda es de arranque, no de diseño. Las dos más útiles cuando puedas:
 
-1. **Quién se queda corto cuando faltan pollitos** (final de la sección B1)
-2. **Los insumos** (B4): si van o no en la Fase 1
-3. **Mercado Pago** (B6): si ya tenés cuenta a nombre de la empresa
+1. **Los insumos** (B4): si entran o no en la Fase 1
+2. **Mercado Pago** (B6): si ya tenés cuenta a nombre de la empresa
 
-Con eso alcanza para cerrar el alcance y empezar el diseño.
+Y el paquete de datos de la sección E, que es lo que efectivamente destraba el
+comienzo: fotos, líneas con precios, y los primeros transportes con sus destinos.
