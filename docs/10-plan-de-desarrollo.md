@@ -1,6 +1,98 @@
 # 10 — Plan de desarrollo por fases
 
+## Modalidad de trabajo elegida: desarrollo módulo por módulo
+
+JB decidió desarrollar la plataforma módulo por módulo, en conjunto, en lugar de
+contratar un equipo externo. Esta sección traduce el plan de fases a esa forma de
+trabajo.
+
+### Qué cambia y qué no
+
+**El código deja de ser el cuello de botella.** Escribir un módulo es rápido. Lo
+que marca el calendario pasa a ser otra cosa:
+
+| Lo que frena de verdad | Se destraba |
+|---|---|
+| Contenido de JB (fotos, precios, transportes) | Juntándolo **en paralelo** al desarrollo, no antes |
+| Habilitaciones de terceros (Mercado Pago, dominio) | **Iniciándolas hoy**: tardan días y no dependen de nosotros |
+| Revisión y decisiones de JB | Bloques cortos de revisión al cerrar cada módulo |
+| Probar con plata real | Sólo se puede hacer una vez, y no se apura |
+
+**Conclusión operativa:** el calendario no se comprime en proporción a lo rápido
+que se escriba el código. Se comprime **ordenando bien qué se hace primero**.
+
+### El principio de orden: que algo sirva desde temprano
+
+En lugar de construir todo y publicar al final, se publica apenas hay algo que
+resuelva un problema real. El primer problema a matar es el más caro que tiene
+JB hoy: **"pasame la lista de precios"**.
+
+```
+Semana 3     Catálogo online público
+             → se acabó pasar la lista por WhatsApp
+             → todavía sin pagos: el pedido se cierra por WhatsApp,
+               pero el cliente ya eligió solo
+
+Semana 6     Reservas y pagos online
+             → la web vende sin intervención humana
+
+Semana 8     Panel de camadas y despachos
+             → el jueves se opera desde el sistema
+
+Semana 10    Pulido, contenido, SEO y salida formal
+```
+
+Desde la semana 3 la web ya devuelve algo, y cada etapa siguiente suma sobre algo
+que funciona. Si en el medio hay que frenar, lo que está publicado **sigue
+sirviendo**.
+
+### Etapas y tiempos estimados
+
+| Etapa | Qué se construye | Estimado |
+|---|---|---|
+| **A · Catálogo online** | Proyecto, base de datos, panel de líneas y camadas, catálogo público, fichas, calendario de nacimientos, pedido por WhatsApp | **2–3 semanas** |
+| **B · Venta online** | Carrito, escalas por cantidad, transportes y destinos, cruce fecha × salida, checkout, Mercado Pago, transferencia, emails | **3 semanas** |
+| **C · Panel operativo** | Registrar nacimiento, faltantes con simulación, excedentes, despachos y guías, clientes, validación de transferencias | **2 semanas** |
+| **D · Cierre** | Home definitiva, guías de crianza, legales, SEO, rendimiento, pruebas y capacitación | **1–2 semanas** |
+| | **Total** | **8–10 semanas** |
+
+**Etapa B es la más riesgosa** (Mercado Pago y el cruce con los transportes). Es
+donde conviene no apurar.
+
+### Qué tiene que estar listo antes de cada etapa
+
+| Antes de… | JB necesita tener |
+|---|---|
+| **A** | Nombres de las líneas, precios, escalas por cantidad, plan sanitario. **Fotos** (se pueden sumar durante la etapa, no el primer día) |
+| **B** | **Cuenta de Mercado Pago verificada a nombre de la empresa** · CBU, alias y titular · Los primeros 10 transportes con ciudades, agencias y días de salida · Política de mortandad escrita |
+| **C** | Historial de las últimas 6 u 8 camadas (esperado vs. nacido real), aunque sea de memoria |
+| **D** | Historia de la empresa · Fotos de planta y equipo · Testimonios de 3 a 5 productores · Dominio |
+
+### Lo que hay que empezar hoy, aunque el desarrollo recién arranque
+
+Estas dos cosas tienen demora propia y están en el camino crítico:
+
+1. **Verificación de la cuenta de Mercado Pago a nombre de la empresa.** Puede
+   tardar días o semanas. Si no está lista para la etapa B, el proyecto se frena
+   ahí sin que nadie pueda hacer nada.
+2. **El dominio.** Comprarlo y tener acceso al panel de DNS.
+
+### Riesgo propio de esta modalidad
+
+| Riesgo | Mitigación |
+|---|---|
+| El desarrollo avanza más rápido que la recolección de contenido | Se prioriza el orden de etapas para que lo que falta no bloquee lo que sigue |
+| JB queda como único revisor y se satura | Revisiones cortas al cerrar cada módulo, no revisión continua |
+| Se acumulan decisiones chicas sin resolver | Se resuelven con el valor por defecto documentado y se ajustan después |
+| Al no haber equipo externo, no hay quien mantenga después | La documentación de este repositorio **es** el traspaso: cualquier desarrollador puede tomarla y continuar |
+
+---
+
 ## Supuestos del plan
+
+> **Nota sobre la palabra "sprint":** es jerga de desarrollo y significa
+> simplemente **un tramo de trabajo de 2 semanas**. Se usa para partir el
+> proyecto en pedazos medibles. Donde dice "sprint 3" leer "las semanas 5 y 6".
 
 - Equipo: **1 desarrollador full stack dedicado** (si son 2, los tiempos se
   reducen ~35%, no 50%).
